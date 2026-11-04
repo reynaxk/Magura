@@ -2,6 +2,7 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { Public } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
+import { BootstrapService } from './common/bootstrap.service';
 import { InfraModule, PrismaService, RedisService } from './common/infra.module';
 import { MarketController } from './market/market.controller';
 import { TrenchesService } from './market/trenches.service';
@@ -45,6 +46,6 @@ class HealthController {
     DmsController,
     RtcController,
   ],
-  providers: [TrenchesService, TradingService, CopyService],
+  providers: [BootstrapService, TrenchesService, TradingService, CopyService],
 })
 export class AppModule {}

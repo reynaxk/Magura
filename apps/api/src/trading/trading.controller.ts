@@ -1,0 +1,155 @@
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { z } from 'zod';
+import type { User } from '@magura/db';
+import { CurrentUser, Public } from '../auth/auth.guard';
+import { PrismaService } from '../common/infra.module';
+import { parse, zChain, zMoney } from '../common/zod';
+import { computePnl } from './pnl';
+import { CopyService } from './copy.service';
+import { TradingService } from './trading.service';
+
+@Controller()
+export class TradingController {
+  constructor(
+    private readonly trading: TradingService,
+    private readonly copy: CopyService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  // ───── swaps (spot only) ─────
+
+  @Post('swap/quote')
+  quote(@Body() body: unknown) {
+    const b = parse(
+      z.object({
+        chain: zChain,
+        side: z.enum(['buy', 'sell']),
+        token: z.string().min(32).max(64),
+        amount: z.string().regex(/^\d+(\.\d+)?$/),
+        slippageBps: z.number().int().min(10).max(5000).default(100),
+        wallet: z.string().min(32).max(64),
+      }),
+      body,
+    );
+    return this.trading.quote(b);
+  }
+
+  @Post('swap/build')
+  build(@Body() body: unknown) {
+    const b = parse(z.object({ quoteId: z.string().uuid() }), body);
+    return this.trading.build(b.quoteId);
+  }
+
+  @Post('trades')
+  record(@Body() body: unknown, @CurrentUser() user: User) {
+    const b = parse(
+      z.object({
+        quoteId: z.string().uuid().optional(),
+        chain: zChain,
+        side: z.enum(['buy', 'sell']),
+        tokenAddress: z.string().min(32).max(64),
+        tokenSymbol: z.string().max(20),
+        txHash: z.string().min(40).max(100),
+        amountUsd: z.number().optional(),
+        pct: z.number().min(0).max(100).optional(),
+        portfolioUsd: z.number().optional(),
+        shareToRoom: z.boolean().optional(),
+        source: z.enum(['manual', 'quickbuy', 'call']).optional(),
+        copyExecutionId: z.string().optional(),
+      }),
+      body,
+    );
+    return this.trading.record(user, b);
+  }
+
+  @Get('me/trades')
+  myTrades(@CurrentUser() user: User) {
+    return this.prisma.db.trade.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 100 });
+  }
+
+  @Get('me/portfolio')
+  async portfolio(@CurrentUser() user: User) {
+    const trades = await this.prisma.db.trade.findMany({ where: { userId: user.id, status: 'confirmed' }, orderBy: { createdAt: 'asc' } });
+    const pnl = computePnl(trades.map((t) => ({ tokenKey: `${t.chain}:${t.tokenAddress}`, side: t.side as 'buy' | 'sell', amountIn: t.amountIn, amountOut: t.amountOut, amountUsd: Number(t.amountUsd ?? 0) })));
+    const source = new Map<string, string>();
+    for (const t of trades) {
+      if (t.side !== 'buy') continue;
+      const k = `${t.chain}:${t.tokenAddress}`;
+      if (t.copyExecutionId) {
+        const e = await this.prisma.db.copyExecution.findUnique({ where: { id: t.copyExecutionId }, include: { subscription: { include: { leader: { select: { handle: true } } } } } });
+        if (e) source.set(k, `copy:${e.subscription.leader.handle}`);
+      } else if (!source.has(k)) source.set(k, t.source);
+    }
+    return {
+      realizedUsd: pnl.realizedUsd,
+      roiPct: pnl.roiPct,
+      winRatePct: pnl.winRatePct,
+      positions: pnl.openPositions.map((p) => {
+        const [chain, address] = p.tokenKey.split(':');
+        const sym = trades.find((t) => t.tokenAddress === address)?.tokenSymbol ?? '?';
+        return { chain, address, symbol: sym, qty: p.qty.toString(), costUsd: p.costUsd, source: source.get(p.tokenKey) ?? 'manual' };
+      }),
+    };
+  }
+
+  // ───── copy trading ─────
+
+  @Public()
+  @Get('copy/leaderboard')
+  leaderboard(@Query('days') days = '30') {
+    const d = parse(z.coerce.number().int().refine((n) => [7, 30, 90, 3650].includes(n)), days);
+    return this.copy.leaderboard(d);
+  }
+
+  @Get('copy/subscriptions')
+  mine(@CurrentUser() user: User) {
+    return this.copy.mine(user);
+  }
+
+  @Post('copy/:handle')
+  subscribe(@Param('handle') handle: string, @Body() body: unknown, @CurrentUser() user: User) {
+    const b = parse(
+      z.object({
+        mode: z.enum(['proportional', 'fixed']).optional(),
+        budgetUsd: zMoney.optional(),
+        fixedAmountUsd: zMoney.optional(),
+        maxPerBuyUsd: zMoney.optional(),
+        stopLossPct: z.number().int().min(1).max(100).optional(),
+        copySells: z.boolean().optional(),
+        memecoins: z.boolean().optional(),
+        buyExisting: z.boolean().optional(),
+        confirmAboveUsd: zMoney.optional(),
+        chains: z.array(zChain).optional(),
+      }),
+      body,
+    );
+    return this.copy.subscribe(user, handle, b as any);
+  }
+
+  @Patch('copy/subscriptions/:id')
+  status(@Param('id') id: string, @Body() body: unknown, @CurrentUser() user: User) {
+    const b = parse(z.object({ status: z.enum(['active', 'paused', 'stopped']) }), body);
+    return this.copy.setStatus(user, id, b.status);
+  }
+
+  @Post('copy/stop-all')
+  stopAll(@CurrentUser() user: User) {
+    return this.copy.stopAll(user);
+  }
+
+  @Get('copy/pending')
+  pending(@CurrentUser() user: User) {
+    return this.copy.pendingConfirmations(user);
+  }
+
+  @Post('copy/executions/:id/confirm')
+  confirm(@Param('id') id: string, @Body() body: unknown, @CurrentUser() user: User) {
+    const b = parse(z.object({ wallet: z.string().min(32).max(64) }), body);
+    return this.copy.confirmBuild(user, id, b.wallet);
+  }
+
+  @Post('copy/executions/:id/skip')
+  skip(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.copy.skipExecution(user, id);
+  }
+}

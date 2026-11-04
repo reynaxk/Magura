@@ -1,0 +1,69 @@
+import { CHAINS, type Candle, type ChainId, type Timeframe } from '@magura/shared';
+import { fetchJson, num } from '../http';
+
+const BASE = 'https://api.geckoterminal.com/api/v2';
+const HEADERS = { accept: 'application/json;version=20230302' };
+
+const TF: Record<Timeframe, { period: 'minute' | 'hour' | 'day'; aggregate: number }> = {
+  '1m': { period: 'minute', aggregate: 1 },
+  '5m': { period: 'minute', aggregate: 5 },
+  '15m': { period: 'minute', aggregate: 15 },
+  '1h': { period: 'hour', aggregate: 1 },
+  '4h': { period: 'hour', aggregate: 4 },
+  '1d': { period: 'day', aggregate: 1 },
+};
+
+export interface NewPool {
+  chain: ChainId;
+  poolAddress: string;
+  baseTokenAddress: string;
+  name: string;
+  createdAt: string;
+  priceUsd: number | null;
+  fdvUsd: number | null;
+  marketCapUsd: number | null;
+  volume24h: number | null;
+  liquidityUsd: number | null;
+  buys24h: number | null;
+  sells24h: number | null;
+  dex: string | null;
+}
+
+export const geckoterminal = {
+  async ohlcv(chain: ChainId, pool: string, tf: Timeframe, limit = 300): Promise<Candle[]> {
+    const { period, aggregate } = TF[tf];
+    const net = CHAINS[chain].geckoterminal;
+    const res = await fetchJson<{ data: { attributes: { ohlcv_list: [number, number, number, number, number, number][] } } }>(
+      `${BASE}/networks/${net}/pools/${pool}/ohlcv/${period}?aggregate=${aggregate}&limit=${limit}&currency=usd`,
+      { headers: HEADERS },
+    );
+    return res.data.attributes.ohlcv_list
+      .map(([t, o, h, l, c, v]) => ({ t, o, h, l, c, v }))
+      .sort((a, b) => a.t - b.t);
+  },
+
+  /** Newest DEX pools on a chain — feeds "Survived" (migrated) and EVM chains without a launchpad. */
+  async newPools(chain: ChainId, page = 1): Promise<NewPool[]> {
+    const net = CHAINS[chain].geckoterminal;
+    const res = await fetchJson<{ data: any[] }>(`${BASE}/networks/${net}/new_pools?page=${page}&include=dex`, { headers: HEADERS });
+    return res.data.map((d) => {
+      const a = d.attributes;
+      const baseId: string = d.relationships?.base_token?.data?.id ?? '';
+      return {
+        chain,
+        poolAddress: a.address,
+        baseTokenAddress: baseId.split('_').slice(1).join('_'),
+        name: a.name,
+        createdAt: a.pool_created_at,
+        priceUsd: num(a.base_token_price_usd),
+        fdvUsd: num(a.fdv_usd),
+        marketCapUsd: num(a.market_cap_usd),
+        volume24h: num(a.volume_usd?.h24),
+        liquidityUsd: num(a.reserve_in_usd),
+        buys24h: num(a.transactions?.h24?.buys),
+        sells24h: num(a.transactions?.h24?.sells),
+        dex: d.relationships?.dex?.data?.id ?? null,
+      };
+    });
+  },
+};

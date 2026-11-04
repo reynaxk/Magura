@@ -1,0 +1,33 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: magura, POSTGRES_PASSWORD: magura, POSTGRES_DB: magura }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql://magura:magura@localhost:5432/magura
+      REDIS_URL: redis://localhost:6379
+      TRENCHES_WORKER: "0"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @magura/db exec prisma migrate deploy || pnpm --filter @magura/db exec prisma db push
+      - run: pnpm --filter @magura/db seed
+      - run: pnpm --filter @magura/api test
+      - run: pnpm typecheck

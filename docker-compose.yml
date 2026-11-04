@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: magura
+      POSTGRES_PASSWORD: magura
+      POSTGRES_DB: magura
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U magura"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    env_file: apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://magura:magura@postgres:5432/magura
+      REDIS_URL: redis://redis:6379
+    ports: ["4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+    profiles: ["full"]
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    env_file: apps/web/.env
+    ports: ["3000:3000"]
+    depends_on: [api]
+    profiles: ["full"]
+
+volumes:
+  pgdata:

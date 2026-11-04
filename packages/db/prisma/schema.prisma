@@ -1,0 +1,421 @@
+// Magura — social spot trading terminal. FIND.TRADE.REPEAT
+// Spot only: there are no perp/leverage models by design.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Chain {
+  solana
+  base
+  bsc
+  ethereum
+}
+
+// ───────────────────────── Users & identity ─────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  privyId     String   @unique
+  handle      String   @unique
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  email       String?  @unique
+  experience  String? // new | some | pro
+  interests   String[]
+  badges      String[] // e.g. TOP_1
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  wallets       Wallet[]
+  settings      UserSettings?
+  followers     Follow[]           @relation("following")
+  following     Follow[]           @relation("follower")
+  messages      Message[]
+  groupMembers  GroupMember[]
+  ownedGroups   Group[]            @relation("groupOwner")
+  dmMembers     DmMember[]
+  trades        Trade[]
+  copyAsLeader  CopySubscription[] @relation("leader")
+  copyAsCopier  CopySubscription[] @relation("copier")
+  notifications Notification[]
+  pushSubs      PushSubscription[]
+  streams       Stream[]
+  callMembers   CallParticipant[]
+  calls         Call[]             @relation("callCreator")
+  reactions     Reaction[]
+  reports       Report[]           @relation("reporter")
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String
+  chainKind String // svm | evm
+  address   String
+  label     String?
+  isPrimary Boolean  @default(false)
+  /// Privy embedded/server wallet id — required for delegated copy-trading execution.
+  privyWalletId String?
+  /// User granted Magura a session signer for copy-trading on this wallet.
+  delegated Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chainKind, address])
+  @@index([userId])
+}
+
+model UserSettings {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // profile visibility
+  publicPnl     Boolean @default(true)
+  showHoldings  Boolean @default(false)
+  copyable      Boolean @default(true)
+  // privacy & chat
+  dmsFromAnyone Boolean @default(true)
+  showInWorld   Boolean @default(true)
+  readReceipts  Boolean @default(false)
+  autoJoinVoice Boolean @default(false)
+  hideBalanceOnStream Boolean @default(true)
+  // trading
+  quickBuyAmounts Json @default("{\"solana\":\"0.5\",\"base\":\"0.01\",\"bsc\":\"0.05\",\"ethereum\":\"0.01\"}")
+  slippageBps     Int  @default(100)
+  // copy defaults
+  copyBudgetUsd       Decimal @default(0) @db.Decimal(18, 2)
+  copyMaxPerBuyUsd    Decimal @default(250) @db.Decimal(18, 2)
+  copyStopLossPct     Int     @default(20)
+  copySells           Boolean @default(true)
+  copyMemecoins       Boolean @default(false)
+  copyBuyExisting     Boolean @default(false)
+  copyConfirmAboveUsd Decimal @default(500) @db.Decimal(18, 2)
+  // notifications: { event: { push: bool, app: bool } }
+  notifications Json @default("{\"copy\":{\"push\":true,\"app\":true},\"call\":{\"push\":true,\"app\":true},\"dm\":{\"push\":true,\"app\":true},\"live\":{\"push\":false,\"app\":true},\"price\":{\"push\":true,\"app\":false},\"group\":{\"push\":false,\"app\":true}}")
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+// ───────────────────────── Tokens & trades ─────────────────────────
+
+model Token {
+  chain      Chain
+  address    String
+  symbol     String
+  name       String
+  decimals   Int?
+  imageUrl   String?
+  launchpad  String? // pumpfun | clanker | fourmeme | flap | pons
+  creator    String?
+  stage      String   @default("new") // new | almost | survived
+  bondingPct Float?
+  migratedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  // latest snapshot (refreshed by trenches worker)
+  marketCapUsd Float?
+  volumeUsd    Float?
+  liquidityUsd Float?
+  holders      Int?
+  buys         Int?
+  sells        Int?
+  priceUsd     Float?
+  pairAddress  String?
+  risk         Json? // TokenRisk from GoPlus
+  riskCheckedAt DateTime?
+
+  @@id([chain, address])
+  @@index([stage, createdAt])
+  @@index([chain, stage, createdAt])
+}
+
+/// Every executed spot trade (manual, quick-buy, or copied).
+model Trade {
+  id          String   @id @default(cuid())
+  userId      String
+  chain       Chain
+  side        String // buy | sell
+  tokenAddress String
+  tokenSymbol String
+  amountIn    String // base units
+  amountOut   String
+  amountUsd   Decimal? @db.Decimal(18, 2)
+  priceUsd    Float?
+  provider    String // jupiter | kyberswap | openocean | pumpportal
+  txHash      String?
+  status      String   @default("pending") // pending | confirmed | failed
+  source      String   @default("manual") // manual | quickbuy | copy | call
+  copyExecutionId String? @unique
+  sharedToRoom String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  copyExecution CopyExecution? @relation(fields: [copyExecutionId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([chain, tokenAddress])
+}
+
+// ───────────────────────── Copy trading (spot) ─────────────────────────
+
+model CopySubscription {
+  id         String   @id @default(cuid())
+  leaderId   String
+  copierId   String
+  mode       String   @default("proportional") // proportional | fixed
+  budgetUsd  Decimal  @db.Decimal(18, 2)
+  fixedAmountUsd Decimal? @db.Decimal(18, 2)
+  maxPerBuyUsd Decimal @db.Decimal(18, 2)
+  stopLossPct Int     @default(20)
+  copySells  Boolean  @default(true)
+  memecoins  Boolean  @default(false)
+  buyExisting Boolean @default(false)
+  confirmAboveUsd Decimal @default(500) @db.Decimal(18, 2)
+  chains     Chain[]
+  status     String   @default("active") // active | paused | stopped
+  stoppedReason String?
+  realizedPnlUsd Decimal @default(0) @db.Decimal(18, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  leader     User     @relation("leader", fields: [leaderId], references: [id], onDelete: Cascade)
+  copier     User     @relation("copier", fields: [copierId], references: [id], onDelete: Cascade)
+  executions CopyExecution[]
+
+  @@unique([leaderId, copierId])
+  @@index([leaderId, status])
+}
+
+model CopyExecution {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  leaderTradeId  String
+  side           String
+  chain          Chain
+  tokenAddress   String
+  tokenSymbol    String
+  amountUsd      Decimal  @db.Decimal(18, 2)
+  status         String   @default("queued") // queued | awaiting_confirm | executing | done | skipped | failed
+  skipReason     String?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  subscription   CopySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  trade          Trade?
+
+  @@unique([subscriptionId, leaderTradeId])
+  @@index([status])
+}
+
+// ───────────────────────── Chat ─────────────────────────
+
+/// One table for every room: world, coin rooms, group channels, DMs, stream chat.
+model Room {
+  id        String   @id // see roomIds in @magura/shared
+  kind      String // world | coin | channel | dm | stream
+  title     String?
+  chain     Chain?
+  tokenAddress String?
+  channelId String?  @unique
+  slowModeSec Int    @default(0)
+  createdAt DateTime @default(now())
+  messages  Message[]
+  channel   Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  dmMembers DmMember[]
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  roomId     String
+  authorId   String
+  text       String
+  attachment Json?
+  replyToId  String?
+  editedAt   DateTime?
+  deletedAt  DateTime?
+  pinned     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions  Reaction[]
+
+  @@index([roomId, createdAt])
+}
+
+model Reaction {
+  messageId String
+  userId    String
+  emoji     String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+}
+
+model DmMember {
+  roomId   String
+  userId   String
+  lastReadAt DateTime?
+  muted    Boolean @default(false)
+  accepted Boolean @default(true) // false = message request
+  room     Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+}
+
+// ───────────────────────── Groups ─────────────────────────
+
+model Group {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  iconUrl     String?
+  color       String   @default("#9D8CFF")
+  isPublic    Boolean  @default(true)
+  ownerId     String
+  rules       String?
+  createdAt   DateTime @default(now())
+  owner       User     @relation("groupOwner", fields: [ownerId], references: [id])
+  members     GroupMember[]
+  channels    Channel[]
+}
+
+model GroupMember {
+  groupId  String
+  userId   String
+  role     String   @default("member") // owner | lead | member
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model Channel {
+  id       String  @id @default(cuid())
+  groupId  String
+  name     String
+  topic    String?
+  kind     String  @default("text") // text | calls | voice
+  position Int     @default(0)
+  group    Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  room     Room?
+  calls    Call[]
+
+  @@unique([groupId, name])
+}
+
+// ───────────────────────── Calls & streams (Cloudflare Realtime) ─────────────────────────
+
+model Call {
+  id        String   @id @default(cuid())
+  kind      String // dm | voice_room | group
+  video     Boolean  @default(false)
+  roomId    String? // DM room for 1:1 calls
+  channelId String?
+  creatorId String
+  /// Cloudflare Realtime session/room reference
+  cfRoom    String?
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  creator   User     @relation("callCreator", fields: [creatorId], references: [id])
+  channel   Channel? @relation(fields: [channelId], references: [id])
+  participants CallParticipant[]
+}
+
+model CallParticipant {
+  callId    String
+  userId    String
+  cfSessionId String?
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  sharingScreen Boolean @default(false)
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([callId, userId])
+}
+
+model Stream {
+  id         String   @id @default(cuid())
+  hostId     String
+  title      String
+  tags       String[] // token tags like solana:<mint>
+  status     String   @default("live") // scheduled | live | ended
+  cfSessionId String?
+  /// WHIP ingest / WHEP playback via Cloudflare Realtime/Stream
+  whipUrl    String?
+  whepUrl    String?
+  viewers    Int      @default(0)
+  startedAt  DateTime @default(now())
+  endedAt    DateTime?
+  host       User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([status, startedAt])
+}
+
+// ───────────────────────── Notifications & moderation ─────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String // copy | call | dm | live | price | group
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  targetKind String // message | user | stream | group
+  targetId   String
+  reason     String
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+  reporter   User     @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  source      String
+  title       String
+  url         String   @unique
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt])
+}

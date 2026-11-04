@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+/* Magura design tokens — matches the concept canvas */
+@theme {
+  --color-bg: #08090c;
+  --color-bar: #0b0d11;
+  --color-panel: #0e1015;
+  --color-raised: #12151b;
+  --color-hover: #161921;
+  --color-line: #1a1d25;
+  --color-line-2: #1f232b;
+  --color-line-3: #2a303c;
+  --color-text: #e9ecf2;
+  --color-text-2: #c9cfda;
+  --color-muted: #8a93a6;
+  --color-faint: #7a8397;
+  --color-lime: #c8f05a;
+  --color-lime-dim: #141a0c;
+  --color-lime-line: #3e4a1e;
+  --color-violet: #9d8cff;
+  --color-violet-2: #b9aeff;
+  --color-violet-dim: #17152a;
+  --color-violet-line: #3a3466;
+  --color-down: #ff6b6b;
+  --color-down-2: #ff8a8a;
+  --color-down-dim: #1a1012;
+  --color-down-line: #4a2a2e;
+  --color-amber: #ffc66b;
+  --color-sky: #8fc6e6;
+  --color-live: #e5354b;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-card: 16px;
+  --radius-panel: 20px;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+* {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: rgb(200 240 90 / 0.25);
+}
+:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}
+button,
+a,
+input {
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.12s ease;
+}
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@utility panel {
+    @apply rounded-[20px] border border-line bg-panel;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.035),
+      0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+@utility card {
+    @apply rounded-2xl border border-line bg-panel;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+@utility label {
+    @apply text-[11px] font-medium uppercase tracking-[0.08em] text-muted;
+}
+
+@utility num {
+    @apply font-mono;
+}
+
+@utility input {
+    @apply h-11 w-full rounded-xl border border-line-2 bg-raised px-3.5 text-sm text-text outline-none placeholder:text-faint focus:border-line-3;
+}
+
+@utility btn {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold;
+}
+
+@utility btn-lime {
+    @apply btn bg-lime text-bg hover:brightness-110;
+}
+
+@utility btn-ghost {
+    @apply btn border border-line-3 bg-raised text-text hover:bg-hover;
+}
+
+@utility btn-violet {
+    @apply btn bg-violet text-bar hover:brightness-110;
+}
+
+@utility btn-danger {
+    @apply btn border border-down-line bg-down-dim text-down-2 hover:brightness-125;
+}
+
+@utility chip {
+    @apply inline-flex h-8 items-center rounded-full border border-line-2 px-3 text-xs font-semibold text-text-2 hover:bg-hover;
+}
+
+@utility chip-on {
+    @apply chip border-text bg-text text-bg hover:bg-text;
+}
+
+@utility scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #2a303c transparent;
+}

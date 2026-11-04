@@ -1,0 +1,117 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CHAINS, fromBaseUnits, type ChainId, type SwapQuote, type SwapTx } from '@magura/shared';
+import { api } from '@/lib/api';
+import { useSession } from '@/lib/session';
+import { toast } from './toaster';
+import { Icon, Svg } from './ui';
+
+type Quote = SwapQuote & { quoteId: string; amountUsd: number | null };
+
+/** Spot buy/sell ticket. Quote → build → wallet signs → API records & confirms. */
+export function TradeTicket({ chain, token, symbol, decimals = 6 }: { chain: ChainId; token: string; symbol: string; decimals?: number }) {
+  const { me, login, addressFor, sendSwap } = useSession();
+  const qc = useQueryClient();
+  const native = CHAINS[chain].nativeSymbol;
+  const presets = (me?.settings?.quickBuyAmounts ?? {}) as Record<string, string>;
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const [amount, setAmount] = useState(presets[chain] ?? '0.5');
+  const [share, setShare] = useState(true);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [busy, setBusy] = useState(false);
+  const slippageBps = Number(me?.settings?.slippageBps ?? 100);
+  const wallet = addressFor(chain);
+
+  useEffect(() => setQuote(null), [side, amount, chain, token]);
+
+  async function getQuote() {
+    if (!me) return login();
+    if (!wallet) return toast({ title: 'No wallet', body: `Connect a ${CHAINS[chain].kind === 'svm' ? 'Solana' : 'EVM'} wallet first` });
+    setBusy(true);
+    try {
+      // sells are entered in token units → convert to base units
+      const amt = side === 'buy' ? amount : BigInt(Math.floor(Number(amount) * 10 ** decimals)).toString();
+      setQuote(await api<Quote>('/swap/quote', { body: { chain, side, token, amount: amt, slippageBps, wallet } }));
+    } catch (e) {
+      toast({ title: 'No route', body: (e as Error).message.replace(/_/g, ' ') });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function execute() {
+    if (!quote) return;
+    setBusy(true);
+    try {
+      const tx = await api<SwapTx>('/swap/build', { body: { quoteId: quote.quoteId } });
+      const txHash = await sendSwap(tx);
+      await api('/trades', {
+        body: { quoteId: quote.quoteId, chain, side, tokenAddress: token, tokenSymbol: symbol, txHash, shareToRoom: share, source: 'manual' },
+      });
+      toast({ title: side === 'buy' ? `Bought ${symbol}` : `Sold ${symbol}`, body: 'Submitted — confirming on-chain', tone: 'lime' });
+      setQuote(null);
+      qc.invalidateQueries({ queryKey: ['portfolio'] });
+    } catch (e) {
+      toast({ title: 'Trade failed', body: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const outHuman = quote ? fromBaseUnits(quote.outAmount, side === 'buy' ? decimals : CHAINS[chain].kind === 'svm' ? 9 : 18) : null;
+
+  return (
+    <section aria-label="Trade ticket" className="panel flex flex-col gap-3.5 p-[18px]">
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-raised p-1">
+        {(['buy', 'sell'] as const).map((s) => (
+          <button key={s} onClick={() => setSide(s)} className={`h-10 rounded-[9px] text-sm font-semibold ${side === s ? (s === 'buy' ? 'bg-lime text-bg' : 'bg-down text-bg') : 'text-text-2'}`}>
+            {s === 'buy' ? 'Buy' : 'Sell'}
+          </button>
+        ))}
+      </div>
+      <label className="flex flex-col gap-1.5 text-xs text-muted">
+        {side === 'buy' ? `Amount (${native})` : `Amount (${symbol})`}
+        <input className="input num h-12 text-[15px]" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} />
+      </label>
+      {side === 'buy' && (
+        <div className="flex gap-1.5">
+          {['0.1', '0.5', '1', '2'].map((v) => (
+            <button key={v} onClick={() => setAmount(v)} className={amount === v ? 'chip-on' : 'chip'}>
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+      {quote && (
+        <div className="flex flex-col gap-1.5 rounded-xl bg-raised p-3 text-xs">
+          <div className="flex justify-between text-muted">
+            <span>You receive</span>
+            <span className="num text-text">
+              ≈ {outHuman?.toLocaleString(undefined, { maximumFractionDigits: 6 })} {side === 'buy' ? symbol : native}
+            </span>
+          </div>
+          <div className="flex justify-between text-muted">
+            <span>Value</span>
+            <span className="num text-text">{quote.amountUsd ? `$${quote.amountUsd.toFixed(2)}` : '—'}</span>
+          </div>
+          <div className="flex justify-between text-muted">
+            <span>Slippage · route</span>
+            <span className="num text-text">
+              {(slippageBps / 100).toFixed(1)}% · {quote.provider}
+            </span>
+          </div>
+        </div>
+      )}
+      <label className="flex items-center gap-2.5 text-[13px] text-text-2">
+        <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="h-[18px] w-[18px] accent-violet" />
+        Share this trade to the coin room
+      </label>
+      <button onClick={quote ? execute : getQuote} disabled={busy} className={`btn h-12 rounded-[14px] text-[15px] ${side === 'buy' ? 'bg-lime text-bg' : 'bg-down text-bg'}`}>
+        <Svg d={Icon.bolt} size={16} />
+        {busy ? 'Working…' : quote ? `Confirm ${side} ${symbol}` : `Get quote`}
+      </button>
+    </section>
+  );
+}

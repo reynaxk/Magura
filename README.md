@@ -41,8 +41,8 @@ Without `NEXT_PUBLIC_PRIVY_APP_ID`, the web app shows **Dev login** (any handle)
 
 Two services from this repo plus Postgres and Redis plugins:
 
-- **api** → `apps/api/railway.json` (runs `prisma migrate deploy` before each deploy, health check `/health`)
-- **web** → `apps/web/railway.json` (set `NEXT_PUBLIC_*` as build args)
+- **api** → Dockerfile `apps/api/Dockerfile`, pre-deploy `node_modules/.bin/prisma db push`, health check `/health`
+- **web** → Dockerfile `apps/web/Dockerfile` (`NEXT_PUBLIC_*` vars are read at build time)
 
 Set every variable from `apps/api/.env.example`. Keep `DEV_AUTH` unset in production (it's ignored when `NODE_ENV=production` anyway).
 

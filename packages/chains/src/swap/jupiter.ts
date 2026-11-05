@@ -1,5 +1,15 @@
+import {
+  AddressLookupTableAccount,
+  Connection,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
+} from '@solana/web3.js';
 import type { SwapQuote, SwapQuoteRequest, SwapTx } from '@magura/shared';
 import { fetchJson, num } from '../http';
+import { rpcUrl } from '../rpc';
 
 /**
  * Jupiter Swap API (Solana). Uses api.jup.ag with an API key when provided,
@@ -22,6 +32,30 @@ interface JupQuote {
   routePlan: { swapInfo: { label?: string } }[];
 }
 
+interface JupIx {
+  programId: string;
+  accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[];
+  data: string;
+}
+
+interface JupSwapInstructions {
+  computeBudgetInstructions?: JupIx[];
+  setupInstructions?: JupIx[];
+  swapInstruction: JupIx;
+  cleanupInstruction?: JupIx | null;
+  otherInstructions?: JupIx[];
+  addressLookupTableAddresses?: string[];
+}
+
+const toIx = (ix: JupIx) =>
+  new TransactionInstruction({
+    programId: new PublicKey(ix.programId),
+    keys: ix.accounts.map((a) => ({ pubkey: new PublicKey(a.pubkey), isSigner: a.isSigner, isWritable: a.isWritable })),
+    data: Buffer.from(ix.data, 'base64'),
+  });
+
+const NO_FEE: SwapQuote['fee'] = { bps: 0, amount: '0', usd: null, side: 'in', receiver: null };
+
 export const jupiter = {
   async quote(req: SwapQuoteRequest): Promise<SwapQuote> {
     const params = new URLSearchParams({
@@ -42,13 +76,19 @@ export const jupiter = {
       minOutAmount: q.otherAmountThreshold,
       priceImpactPct: num(q.priceImpactPct) != null ? Number(q.priceImpactPct) * 100 : null,
       route: q.routePlan.map((r) => r.swapInfo.label ?? '?'),
+      fee: NO_FEE,
       raw: q,
     };
   },
 
-  /** Build an unsigned versioned transaction for the user's wallet to sign. */
+  /**
+   * Build an unsigned v0 transaction for the user's wallet to sign.
+   * When the quote carries a Magura fee, a SOL transfer to the treasury is added:
+   * before the swap for buys (fee taken from the SOL being spent), after the
+   * wSOL cleanup for sells (fee taken from the SOL received).
+   */
   async buildTx(quote: SwapQuote, userPublicKey: string, opts: { priorityLamports?: number } = {}): Promise<SwapTx> {
-    const res = await fetchJson<{ swapTransaction: string }>(`${base()}/swap/v1/swap`, {
+    const ixs = await fetchJson<JupSwapInstructions>(`${base()}/swap/v1/swap-instructions`, {
       method: 'POST',
       headers: headers(),
       body: {
@@ -61,7 +101,33 @@ export const jupiter = {
           : 'auto',
       },
     });
-    return { chain: 'solana', provider: 'jupiter', solanaTxBase64: res.swapTransaction };
+
+    const user = new PublicKey(userPublicKey);
+    const feeIx =
+      quote.fee.receiver && BigInt(quote.fee.amount) > 0n
+        ? SystemProgram.transfer({ fromPubkey: user, toPubkey: new PublicKey(quote.fee.receiver), lamports: BigInt(quote.fee.amount) })
+        : null;
+
+    const instructions: TransactionInstruction[] = [
+      ...(ixs.computeBudgetInstructions ?? []).map(toIx),
+      ...(feeIx && quote.fee.side === 'in' ? [feeIx] : []),
+      ...(ixs.otherInstructions ?? []).map(toIx),
+      ...(ixs.setupInstructions ?? []).map(toIx),
+      toIx(ixs.swapInstruction),
+      ...(ixs.cleanupInstruction ? [toIx(ixs.cleanupInstruction)] : []),
+      ...(feeIx && quote.fee.side === 'out' ? [feeIx] : []),
+    ];
+
+    const conn = new Connection(rpcUrl('solana'), 'confirmed');
+    const alts = await Promise.all(
+      (ixs.addressLookupTableAddresses ?? []).map(async (a) => (await conn.getAddressLookupTable(new PublicKey(a))).value),
+    );
+    const { blockhash } = await conn.getLatestBlockhash('confirmed');
+    const message = new TransactionMessage({ payerKey: user, recentBlockhash: blockhash, instructions }).compileToV0Message(
+      alts.filter((a): a is AddressLookupTableAccount => !!a),
+    );
+    const tx = new VersionedTransaction(message);
+    return { chain: 'solana', provider: 'jupiter', solanaTxBase64: Buffer.from(tx.serialize()).toString('base64') };
   },
 
   /** Token search (name, symbol or mint). */

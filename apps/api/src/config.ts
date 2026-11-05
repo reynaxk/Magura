@@ -22,6 +22,9 @@ const Env = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:team@magura.app'),
   SENTRY_DSN: z.string().optional(),
+  /** Treasury wallets that receive Magura's trading fee. Public addresses, not secrets. */
+  FEE_WALLET_SOLANA: z.string().min(32).max(44).optional(),
+  FEE_WALLET_EVM: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
 });
 
 export const env = Env.parse(process.env);

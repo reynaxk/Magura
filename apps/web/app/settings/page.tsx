@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CHAIN_IDS, CHAINS, shortAddr } from '@magura/shared';
+import { CHAIN_IDS, CHAINS, FEE_TIERS, MIN_TRADE_USD, bpsToPct, shortAddr } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
@@ -160,6 +160,28 @@ export default function SettingsPage() {
                   />
                 </label>
               ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-semibold">Magura fees</span>
+              <span className="text-xs text-muted">Charged per trade in SOL / ETH / BNB. Bigger trades pay less. Minimum trade ${MIN_TRADE_USD}. You always pay your own network gas.</span>
+              <table className="w-full max-w-md text-[13px]">
+                <thead>
+                  <tr className="label border-b border-line text-left">
+                    <th className="py-2 font-medium">Trade size</th>
+                    <th className="font-medium">Solana</th>
+                    <th className="font-medium">Base · BNB · ETH</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {FEE_TIERS.map((t) => (
+                    <tr key={t.fromUsd} className="border-b border-[#151820]">
+                      <td className="num py-2">{t.toUsd ? `$${t.fromUsd} – $${(t.toUsd - 0.01).toFixed(2)}` : `$${t.fromUsd}+`}</td>
+                      <td className="num">{bpsToPct(t.svmBps)}</td>
+                      <td className="num">{bpsToPct(t.evmBps)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             <label className="flex max-w-[220px] flex-col gap-1.5 text-xs text-muted">
               Default slippage (%)

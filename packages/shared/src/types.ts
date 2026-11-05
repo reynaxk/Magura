@@ -83,6 +83,8 @@ export interface SwapQuote {
   minOutAmount: string;
   priceImpactPct: number | null;
   route: string[];
+  /** Magura platform fee (charged in the chain's native coin). */
+  fee: { bps: number; amount: string; usd: number | null; side: 'in' | 'out'; receiver: string | null };
   /** Opaque provider payload needed to build the tx. */
   raw: unknown;
 }

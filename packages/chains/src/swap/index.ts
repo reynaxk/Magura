@@ -7,8 +7,8 @@ export { kyberswap } from './kyberswap';
 export { openocean } from './openocean';
 
 /** Best spot quote for any supported chain. Solana → Jupiter, EVM → KyberSwap. */
-export async function getQuote(req: SwapQuoteRequest): Promise<SwapQuote> {
-  return CHAINS[req.chain].kind === 'svm' ? jupiter.quote(req) : kyberswap.quote(req);
+export async function getQuote(req: SwapQuoteRequest, evmFee?: { bps: number; side: 'in' | 'out'; receiver: string }): Promise<SwapQuote> {
+  return CHAINS[req.chain].kind === 'svm' ? jupiter.quote(req) : kyberswap.quote(req, evmFee);
 }
 
 export async function buildSwapTx(quote: SwapQuote, userAddress: string): Promise<SwapTx> {

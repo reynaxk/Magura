@@ -36,6 +36,7 @@ export const openocean = {
         minOutAmount: d.minOutAmount,
         priceImpactPct: null,
         route: ['openocean'],
+        fee: { bps: 0, amount: '0', usd: null, side: 'in', receiver: null },
         raw: d,
       },
       tx: { chain: req.chain, provider: 'openocean', evmTx: { to: d.to, data: d.data, value: d.value } },

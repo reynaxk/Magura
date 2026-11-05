@@ -1,8 +1,20 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { buildSwapTx, evmClient, getQuote, solanaRpc } from '@magura/chains';
+import { buildSwapTx, dexscreener, evmClient, getQuote, solanaRpc } from '@magura/chains';
 import type { Chain, Trade, User } from '@magura/db';
-import { CHAINS, EVM_NATIVE, roomIds, toBaseUnits, type ChainId, type SwapQuote, type TradeAttachment } from '@magura/shared';
+import {
+  CHAINS,
+  EVM_NATIVE,
+  MIN_TRADE_USD,
+  TradeTooSmallError,
+  feeBpsFor,
+  roomIds,
+  toBaseUnits,
+  type ChainId,
+  type SwapQuote,
+  type TradeAttachment,
+} from '@magura/shared';
+import { env } from '../config';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
 
@@ -56,19 +68,73 @@ export class TradingService {
 
   async nativeUsd(chain: ChainId): Promise<number | null> {
     const px = await this.majors();
-    return px[CHAINS[chain].nativeSymbol] ?? null;
+    const hit = px[CHAINS[chain].nativeSymbol];
+    if (hit) return hit;
+    // fallback: price of the wrapped native coin on DexScreener
+    return this.redis.cached(`native:${chain}`, 60, async () => {
+      const p = await dexscreener.bestPair(chain, CHAINS[chain].quoteToken.address).catch(() => null);
+      return p?.priceUsd ?? null;
+    });
   }
 
+  /**
+   * Quote a spot trade with Magura's size-tiered fee.
+   * The trade is valued in USD first (buys: native spent, sells: native received),
+   * that picks the tier, and the fee is charged in the chain's native coin.
+   */
   async quote(q: QuoteInput): Promise<SwapQuote & { quoteId: string; amountUsd: number | null }> {
     const c = CHAINS[q.chain];
-    const native = c.kind === 'svm' ? c.quoteToken.address : EVM_NATIVE;
-    const [input, output] = q.side === 'buy' ? [native, q.token] : [q.token, native];
-    const amount = q.side === 'buy' ? toBaseUnits(q.amount, c.kind === 'svm' ? 9 : 18) : q.amount;
-    if (amount === '0') throw new BadRequestException('amount_zero');
-    const quote = await getQuote({ chain: q.chain, inputToken: input, outputToken: output, amount, slippageBps: q.slippageBps, userAddress: q.wallet });
+    const svm = c.kind === 'svm';
+    const dec = svm ? 9 : 18;
+    const native = svm ? c.quoteToken.address : EVM_NATIVE;
     const nUsd = await this.nativeUsd(q.chain);
-    const nativeAmount = q.side === 'buy' ? quote.inAmount : quote.outAmount;
-    const amountUsd = nUsd ? (Number(nativeAmount) / 10 ** (c.kind === 'svm' ? 9 : 18)) * nUsd : null;
+    if (!nUsd) throw new BadRequestException('price_unavailable');
+    const receiver = (svm ? env.FEE_WALLET_SOLANA : env.FEE_WALLET_EVM) ?? null;
+    const toUsd = (base: string | bigint) => (Number(base) / 10 ** dec) * nUsd;
+    const bpsFor = (usd: number) => {
+      try {
+        return feeBpsFor(q.chain, usd);
+      } catch (e) {
+        if (e instanceof TradeTooSmallError) throw new BadRequestException(`min_trade_${MIN_TRADE_USD}_usd`);
+        throw e;
+      }
+    };
+
+    let quote: SwapQuote;
+    let amountUsd: number;
+    if (q.side === 'buy') {
+      const gross = BigInt(toBaseUnits(q.amount, dec));
+      if (gross === 0n) throw new BadRequestException('amount_zero');
+      amountUsd = toUsd(gross);
+      const bps = receiver ? bpsFor(amountUsd) : (bpsFor(amountUsd), 0);
+      const req = { chain: q.chain, inputToken: native, outputToken: q.token, slippageBps: q.slippageBps, userAddress: q.wallet };
+      if (svm) {
+        const fee = (gross * BigInt(bps)) / 10_000n;
+        quote = await getQuote({ ...req, amount: (gross - fee).toString() });
+        quote.fee = { bps, amount: fee.toString(), usd: toUsd(fee), side: 'in', receiver };
+        quote.inAmount = gross.toString(); // what leaves the wallet, fee included
+      } else {
+        quote = await getQuote({ ...req, amount: gross.toString() }, receiver && bps ? { bps, side: 'in', receiver } : undefined);
+        quote.fee.usd = toUsd(quote.fee.amount);
+      }
+    } else {
+      if (!/^\d+$/.test(q.amount) || q.amount === '0') throw new BadRequestException('amount_zero');
+      const req = { chain: q.chain, inputToken: q.token, outputToken: native, amount: q.amount, slippageBps: q.slippageBps, userAddress: q.wallet };
+      const pre = await getQuote(req);
+      amountUsd = toUsd(pre.outAmount);
+      const bps = receiver ? bpsFor(amountUsd) : (bpsFor(amountUsd), 0);
+      if (svm) {
+        quote = pre;
+        // charged on the guaranteed minimum so the transfer can never exceed what arrives
+        const fee = (BigInt(pre.minOutAmount) * BigInt(bps)) / 10_000n;
+        quote.fee = { bps, amount: fee.toString(), usd: toUsd(fee), side: 'out', receiver };
+      } else {
+        quote = receiver && bps ? await getQuote(req, { bps, side: 'out', receiver }) : pre;
+        quote.fee.usd = toUsd(quote.fee.amount);
+      }
+    }
+
+    if (!receiver) this.log.warn(`No fee wallet set for ${q.chain} — trade quoted without a Magura fee`);
     const quoteId = randomUUID();
     await this.redis.client.set(`quote:${quoteId}`, JSON.stringify({ quote, wallet: q.wallet, amountUsd }), 'EX', 120);
     return { ...quote, quoteId, amountUsd };
@@ -87,6 +153,8 @@ export class TradingService {
     let amountOut = '0';
     let amountUsd = input.amountUsd ?? null;
     let provider = 'unknown';
+    let feeBps: number | null = null;
+    let feeUsd: number | null = null;
     if (input.quoteId) {
       const raw = await this.redis.client.get(`quote:${input.quoteId}`);
       if (raw) {
@@ -95,6 +163,8 @@ export class TradingService {
         amountOut = quote.outAmount;
         provider = quote.provider;
         amountUsd = amountUsd ?? qUsd;
+        feeBps = quote.fee?.bps ?? null;
+        feeUsd = quote.fee?.usd ?? null;
       }
     }
     const tokenAddress = input.chain === 'solana' ? input.tokenAddress : input.tokenAddress.toLowerCase();
@@ -108,6 +178,8 @@ export class TradingService {
         amountIn,
         amountOut,
         amountUsd: amountUsd ?? undefined,
+        feeBps,
+        feeUsd: feeUsd ?? undefined,
         provider,
         txHash: input.txHash,
         source: input.source ?? 'manual',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CHAINS, fromBaseUnits, type ChainId, type SwapQuote, type SwapTx } from '@magura/shared';
+import { CHAINS, bpsToPct, fromBaseUnits, nextTier, type ChainId, type SwapQuote, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from './toaster';
@@ -35,7 +35,8 @@ export function TradeTicket({ chain, token, symbol, decimals = 6 }: { chain: Cha
       const amt = side === 'buy' ? amount : BigInt(Math.floor(Number(amount) * 10 ** decimals)).toString();
       setQuote(await api<Quote>('/swap/quote', { body: { chain, side, token, amount: amt, slippageBps, wallet } }));
     } catch (e) {
-      toast({ title: 'No route', body: (e as Error).message.replace(/_/g, ' ') });
+      const msg = (e as Error).message;
+      toast({ title: msg.startsWith('min_trade') ? 'Trade too small' : 'No route', body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $2' : msg.replace(/_/g, ' ') });
     } finally {
       setBusy(false);
     }
@@ -96,6 +97,17 @@ export function TradeTicket({ chain, token, symbol, decimals = 6 }: { chain: Cha
             <span>Value</span>
             <span className="num text-text">{quote.amountUsd ? `$${quote.amountUsd.toFixed(2)}` : '—'}</span>
           </div>
+          <div className="flex justify-between text-muted">
+            <span>Magura fee</span>
+            <span className="num text-text">
+              {quote.fee.bps ? `${bpsToPct(quote.fee.bps)} · $${(quote.fee.usd ?? 0).toFixed(2)}` : '—'}
+            </span>
+          </div>
+          {quote.amountUsd != null && nextTier(chain, quote.amountUsd) && (
+            <div className="text-[11px] text-lime">
+              Trade ${nextTier(chain, quote.amountUsd)!.atUsd}+ to pay {bpsToPct(nextTier(chain, quote.amountUsd)!.bps)}
+            </div>
+          )}
           <div className="flex justify-between text-muted">
             <span>Slippage · route</span>
             <span className="num text-text">

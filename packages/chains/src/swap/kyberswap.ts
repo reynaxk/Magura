@@ -21,10 +21,21 @@ interface KyberRoute {
 }
 
 export const kyberswap = {
-  async quote(req: SwapQuoteRequest): Promise<SwapQuote> {
+  /**
+   * Quote with an optional Magura fee. KyberSwap takes the fee itself and pays it to
+   * `feeReceiver` in the same transaction: from the native coin spent on buys
+   * (currency_in) or from the native coin received on sells (currency_out).
+   */
+  async quote(req: SwapQuoteRequest, fee?: { bps: number; side: 'in' | 'out'; receiver: string }): Promise<SwapQuote> {
     const slug = CHAINS[req.chain].kyberswap;
     if (!slug) throw new Error(`KyberSwap does not support ${req.chain}`);
     const params = new URLSearchParams({ tokenIn: req.inputToken, tokenOut: req.outputToken, amountIn: req.amount });
+    if (fee && fee.bps > 0) {
+      params.set('feeAmount', String(fee.bps));
+      params.set('isInBps', 'true');
+      params.set('chargeFeeBy', fee.side === 'in' ? 'currency_in' : 'currency_out');
+      params.set('feeReceiver', fee.receiver);
+    }
     const r = await fetchJson<KyberRoute>(`${BASE}/${slug}/api/v1/routes?${params}`, { headers: headers() });
     const s = r.data.routeSummary;
     const minOut = (BigInt(s.amountOut) * BigInt(10_000 - req.slippageBps)) / 10_000n;
@@ -38,6 +49,15 @@ export const kyberswap = {
       minOutAmount: minOut.toString(),
       priceImpactPct: null,
       route: s.route.flat().map((h) => h.exchange),
+      fee: fee && fee.bps > 0
+        ? {
+            bps: fee.bps,
+            amount: ((BigInt(fee.side === 'in' ? s.amountIn : s.amountOut) * BigInt(fee.bps)) / 10_000n).toString(),
+            usd: null,
+            side: fee.side,
+            receiver: fee.receiver,
+          }
+        : { bps: 0, amount: '0', usd: null, side: 'in', receiver: null },
       raw: { ...r.data, slippageBps: req.slippageBps },
     };
   },

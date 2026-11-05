@@ -157,6 +157,9 @@ model Trade {
   amountOut   String
   amountUsd   Decimal? @db.Decimal(18, 2)
   priceUsd    Float?
+  /// Magura platform fee charged on this trade (size-tiered, in native coin)
+  feeBps      Int?
+  feeUsd      Decimal? @db.Decimal(18, 4)
   provider    String // jupiter | kyberswap | openocean | pumpportal
   txHash      String?
   status      String   @default("pending") // pending | confirmed | failed

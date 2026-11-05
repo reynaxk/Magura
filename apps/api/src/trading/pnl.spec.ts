@@ -34,3 +34,17 @@ test('trenches stages: bonding curve vs DEX-native', () => {
   assert.equal(stageFor({ ...base, launchpad: 'clanker', bondingPct: null, marketCapUsd: 50_000 }), 'almost');
   assert.equal(stageFor({ ...base, launchpad: null, bondingPct: null, marketCapUsd: 400_000, liquidityUsd: 60_000 }), 'survived');
 });
+
+test('Magura fee tiers by trade size', async () => {
+  const { feeBpsFor, MIN_TRADE_USD } = await import('@magura/shared');
+  assert.equal(MIN_TRADE_USD, 2);
+  assert.throws(() => feeBpsFor('solana', 1.99));
+  assert.equal(feeBpsFor('solana', 2), 255);
+  assert.equal(feeBpsFor('base', 10.5), 400);
+  assert.equal(feeBpsFor('bsc', 11), 200);
+  assert.equal(feeBpsFor('ethereum', 99.99), 200);
+  assert.equal(feeBpsFor('solana', 100), 100);
+  assert.equal(feeBpsFor('base', 499), 100);
+  assert.equal(feeBpsFor('solana', 500), 75);
+  assert.equal(feeBpsFor('bsc', 25_000), 75);
+});

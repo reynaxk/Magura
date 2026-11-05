@@ -12,7 +12,8 @@
   "dependencies": {
     "@magura/shared": "workspace:*",
     "viem": "^2.21.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@solana/web3.js": "^1.98.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

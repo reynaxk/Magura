@@ -168,6 +168,8 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
           volumeUsd: p?.volume24h ?? t.volumeUsd,
           liquidityUsd: p?.liquidityUsd ?? t.liquidityUsd,
           priceUsd: p?.priceUsd ?? t.priceUsd,
+          priceChange1h: p?.priceChange1h ?? t.priceChange1h,
+          priceChange24h: p?.priceChange24h ?? t.priceChange24h,
           pairAddress: t.pairAddress ?? p?.pairAddress ?? null,
           imageUrl: t.imageUrl ?? p?.imageUrl ?? null,
           // pump.fun tokens that appear on a non-pump DEX have migrated

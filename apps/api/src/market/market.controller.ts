@@ -4,9 +4,10 @@ import { Cron } from '@nestjs/schedule';
 import { dexscreener, fetchNews, geckoterminal, goplus, jupiter, polymarket } from '@magura/chains';
 import type { User } from '@magura/db';
 import { CHAIN_IDS, type ChainId, type Timeframe } from '@magura/shared';
-import { OptionalUser, Public } from '../auth/auth.guard';
+import { CurrentUser, OptionalUser, Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
+import { HuntService, type HuntSort } from './hunt.service';
 import { TrenchesService } from './trenches.service';
 
 const addr = (chain: ChainId, a: string) => (chain === 'solana' ? a : a.toLowerCase());
@@ -17,7 +18,43 @@ export class MarketController {
     private readonly redis: RedisService,
     private readonly prisma: PrismaService,
     private readonly trenches: TrenchesService,
+    private readonly hunt: HuntService,
   ) {}
+
+  /** Hunt: discover coins. Filters + sort; public, personalised when logged in. */
+  @Public()
+  @Get('hunt')
+  huntList(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
+    const p = parse(
+      z.object({
+        chains: z.string().default(CHAIN_IDS.join(',')),
+        sort: z.enum(['hot', 'gainers', 'losers', 'volume', 'new']).default('hot'),
+        minMc: z.coerce.number().min(0).optional(),
+        maxMc: z.coerce.number().min(0).optional(),
+        maxAgeH: z.coerce.number().min(0.1).max(24 * 365).optional(),
+        minLiq: z.coerce.number().min(0).optional(),
+        safeOnly: z.enum(['1', '0', 'true', 'false']).optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+      }),
+      q,
+    );
+    const chains = p.chains.split(',').filter((c): c is ChainId => (CHAIN_IDS as string[]).includes(c));
+    return this.hunt.list(
+      { ...p, chains: chains.length ? chains : CHAIN_IDS, sort: p.sort as HuntSort, safeOnly: p.safeOnly === '1' || p.safeOnly === 'true' },
+      user?.id ?? null,
+    );
+  }
+
+  @Get('hunt/friends')
+  huntFriends(@CurrentUser() user: User) {
+    return this.hunt.friendsBuying(user.id);
+  }
+
+  @Public()
+  @Get('hunt/calls')
+  huntCalls() {
+    return this.hunt.freshCalls();
+  }
 
   @Public()
   @Get('ticker')

@@ -136,6 +136,8 @@ model Token {
   buys         Int?
   sells        Int?
   priceUsd     Float?
+  priceChange1h  Float?
+  priceChange24h Float?
   pairAddress  String?
   risk         Json? // TokenRisk from GoPlus
   riskCheckedAt DateTime?

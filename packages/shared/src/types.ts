@@ -44,6 +44,7 @@ export interface PairSummary {
   quoteToken: { address: string; symbol: string };
   priceUsd: number | null;
   priceChange24h: number | null;
+  priceChange1h?: number | null;
   volume24h: number | null;
   liquidityUsd: number | null;
   fdv: number | null;
@@ -131,4 +132,25 @@ export interface CallAttachment {
   buyZone: string;
   target: string;
   invalidation: string;
+}
+
+/** A row on the Hunt page. */
+export interface HuntToken {
+  chain: ChainId;
+  address: string;
+  symbol: string;
+  name: string;
+  imageUrl: string | null;
+  stage: TrenchStage;
+  createdAt: string;
+  priceUsd: number | null;
+  change1h: number | null;
+  change24h: number | null;
+  marketCapUsd: number | null;
+  volumeUsd: number | null;
+  liquidityUsd: number | null;
+  risk: TokenRisk | null;
+  chatCount: number;
+  friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];
+  hotScore: number;
 }

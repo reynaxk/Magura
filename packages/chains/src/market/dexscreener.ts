@@ -10,7 +10,7 @@ interface DsPair {
   baseToken: { address: string; name: string; symbol: string };
   quoteToken: { address: string; symbol: string };
   priceUsd?: string;
-  priceChange?: { h24?: number };
+  priceChange?: { h1?: number; h24?: number };
   volume?: { h24?: number };
   liquidity?: { usd?: number };
   fdv?: number;
@@ -31,6 +31,7 @@ function toSummary(p: DsPair): PairSummary | null {
     quoteToken: p.quoteToken,
     priceUsd: num(p.priceUsd),
     priceChange24h: num(p.priceChange?.h24),
+    priceChange1h: num(p.priceChange?.h1),
     volume24h: num(p.volume?.h24),
     liquidityUsd: num(p.liquidity?.usd),
     fdv: num(p.fdv),

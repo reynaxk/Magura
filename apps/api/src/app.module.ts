@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { BootstrapService } from './common/bootstrap.service';
 import { InfraModule, PrismaService, RedisService } from './common/infra.module';
 import { MarketController } from './market/market.controller';
+import { HuntService } from './market/hunt.service';
 import { TrenchesService } from './market/trenches.service';
 import { ModerationModule } from './moderation/moderation.service';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -46,6 +47,6 @@ class HealthController {
     DmsController,
     RtcController,
   ],
-  providers: [BootstrapService, TrenchesService, TradingService, CopyService],
+  providers: [BootstrapService, HuntService, TrenchesService, TradingService, CopyService],
 })
 export class AppModule {}

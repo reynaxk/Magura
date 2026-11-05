@@ -168,16 +168,14 @@ export default function SettingsPage() {
                 <thead>
                   <tr className="label border-b border-line text-left">
                     <th className="py-2 font-medium">Trade size</th>
-                    <th className="font-medium">Solana</th>
-                    <th className="font-medium">Base · BNB · ETH</th>
+                    <th className="font-medium">Magura fee</th>
                   </tr>
                 </thead>
                 <tbody>
                   {FEE_TIERS.map((t) => (
                     <tr key={t.fromUsd} className="border-b border-[#151820]">
-                      <td className="num py-2">{t.toUsd ? `$${t.fromUsd} – $${(t.toUsd - 0.01).toFixed(2)}` : `$${t.fromUsd}+`}</td>
+                      <td className="num py-2">{t.toUsd ? `$${t.fromUsd.toLocaleString('en-US')} – $${(t.toUsd - 0.01).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `$${t.fromUsd.toLocaleString('en-US')}+`}</td>
                       <td className="num">{bpsToPct(t.svmBps)}</td>
-                      <td className="num">{bpsToPct(t.evmBps)}</td>
                     </tr>
                   ))}
                 </tbody>

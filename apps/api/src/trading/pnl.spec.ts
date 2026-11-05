@@ -37,14 +37,15 @@ test('trenches stages: bonding curve vs DEX-native', () => {
 
 test('Magura fee tiers by trade size', async () => {
   const { feeBpsFor, MIN_TRADE_USD } = await import('@magura/shared');
-  assert.equal(MIN_TRADE_USD, 2);
-  assert.throws(() => feeBpsFor('solana', 1.99));
-  assert.equal(feeBpsFor('solana', 2), 100);
-  assert.equal(feeBpsFor('base', 10.5), 100);
-  assert.equal(feeBpsFor('bsc', 11), 100);
-  assert.equal(feeBpsFor('ethereum', 99.99), 100);
-  assert.equal(feeBpsFor('solana', 100), 85);
-  assert.equal(feeBpsFor('base', 499), 85);
-  assert.equal(feeBpsFor('solana', 500), 75);
-  assert.equal(feeBpsFor('bsc', 25_000), 75);
+  assert.equal(MIN_TRADE_USD, 1);
+  assert.throws(() => feeBpsFor('solana', 0.99));
+  const cases: [number, number][] = [
+    [1, 200], [24.99, 200], [25, 175], [49.99, 175], [50, 150], [99.99, 150], [100, 125], [199.99, 125],
+    [200, 100], [499.99, 100], [500, 75], [999.99, 75], [1000, 60], [4999.99, 60], [5000, 40], [9999.99, 40],
+    [10000, 25], [24999.99, 25], [25000, 20], [1_000_000, 20],
+  ];
+  for (const [usd, bps] of cases) {
+    assert.equal(feeBpsFor('solana', usd), bps, `solana $${usd}`);
+    assert.equal(feeBpsFor('base', usd), bps, `base $${usd}`);
+  }
 });

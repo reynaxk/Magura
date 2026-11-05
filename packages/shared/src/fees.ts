@@ -1,16 +1,23 @@
 import { CHAINS, type ChainId } from './chains';
 
 /**
- * Magura platform fee — tiered by trade size in USD.
+ * Magura platform fee — tiered by trade size in USD (same on every chain).
  *
- *   $2 – 99.99    1%      ("never more than 1%")
- *   $100 – 499.99 0.85%
- *   $500+         0.75%
+ *   $1 – 24.99          2.00%
+ *   $25 – 49.99         1.75%
+ *   $50 – 99.99         1.50%
+ *   $100 – 199.99       1.25%
+ *   $200 – 499.99       1.00%
+ *   $500 – 999.99       0.75%
+ *   $1,000 – 4,999.99   0.60%
+ *   $5,000 – 9,999.99   0.40%
+ *   $10,000 – 24,999.99 0.25%
+ *   $25,000+            0.20%
  *
- * Trades under $2 are rejected. Users always pay their own gas (no sponsorship).
+ * Trades under $1 are rejected. Users always pay their own gas (no sponsorship).
  * Fees are charged in the chain's native coin (SOL / ETH / BNB).
  */
-export const MIN_TRADE_USD = 2;
+export const MIN_TRADE_USD = 1;
 
 export interface FeeTier {
   /** inclusive lower bound in USD */
@@ -21,10 +28,19 @@ export interface FeeTier {
   evmBps: number;
 }
 
+const tier = (fromUsd: number, toUsd: number | null, bps: number): FeeTier => ({ fromUsd, toUsd, svmBps: bps, evmBps: bps });
+
 export const FEE_TIERS: FeeTier[] = [
-  { fromUsd: 2, toUsd: 100, svmBps: 100, evmBps: 100 },
-  { fromUsd: 100, toUsd: 500, svmBps: 85, evmBps: 85 },
-  { fromUsd: 500, toUsd: null, svmBps: 75, evmBps: 75 },
+  tier(1, 25, 200),
+  tier(25, 50, 175),
+  tier(50, 100, 150),
+  tier(100, 200, 125),
+  tier(200, 500, 100),
+  tier(500, 1_000, 75),
+  tier(1_000, 5_000, 60),
+  tier(5_000, 10_000, 40),
+  tier(10_000, 25_000, 25),
+  tier(25_000, null, 20),
 ];
 
 export class TradeTooSmallError extends Error {

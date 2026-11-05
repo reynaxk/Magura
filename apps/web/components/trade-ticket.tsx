@@ -36,7 +36,7 @@ export function TradeTicket({ chain, token, symbol, decimals = 6 }: { chain: Cha
       setQuote(await api<Quote>('/swap/quote', { body: { chain, side, token, amount: amt, slippageBps, wallet } }));
     } catch (e) {
       const msg = (e as Error).message;
-      toast({ title: msg.startsWith('min_trade') ? 'Trade too small' : 'No route', body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $2' : msg.replace(/_/g, ' ') });
+      toast({ title: msg.startsWith('min_trade') ? 'Trade too small' : 'No route', body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $1' : msg.replace(/_/g, ' ') });
     } finally {
       setBusy(false);
     }

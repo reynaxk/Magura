@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen font-sans">
         <Providers>
           <Header />
-          <main>{children}</main>
+          <main className="pb-[76px] md:pb-0">{children}</main>
         </Providers>
       </body>
     </html>

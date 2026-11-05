@@ -41,7 +41,7 @@ export function Toaster() {
   useSocketEvent('stream:live', (p) => push({ title: `@${p.hostHandle} is live`, body: p.title, href: `/live/${p.streamId}`, tone: 'violet' }));
 
   return (
-    <div aria-live="polite" className="fixed bottom-6 right-6 z-50 flex w-[340px] flex-col gap-2">
+    <div aria-live="polite" className="fixed inset-x-3 bottom-24 z-50 flex flex-col gap-2 md:inset-x-auto md:bottom-6 md:right-6 md:w-[340px]">
       {items.map((t) => {
         const border = t.tone === 'lime' ? 'border-lime-line' : t.tone === 'violet' ? 'border-violet-line' : 'border-line-3';
         const inner = (

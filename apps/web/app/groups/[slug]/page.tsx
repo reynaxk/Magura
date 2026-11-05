@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { ChatPanel } from '@/components/chat-panel';
 import { toast } from '@/components/toaster';
+import { SocialTabs } from '@/components/header';
 import { Avatar, Icon, Svg } from '@/components/ui';
 
 interface Channel {
@@ -63,8 +64,10 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const isMember = !!g.role;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-wrap">
-      <aside aria-label="Channels" className="flex w-[260px] shrink-0 flex-col border-r border-line bg-bar">
+    <div className="flex h-app flex-col">
+    <SocialTabs />
+    <div className="flex min-h-0 flex-1 md:flex-wrap">
+      <aside aria-label="Channels" className="hidden w-[260px] shrink-0 flex-col border-r border-line bg-bar md:flex">
         <div className="flex flex-col gap-3 border-b border-line p-4">
           <div className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold text-bar" style={{ background: g.color }}>
@@ -105,15 +108,42 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex flex-col gap-2 border-b border-line px-4 py-3 md:hidden">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[10px] text-xs font-semibold text-bar" style={{ background: g.color }}>
+              {g.name.slice(0, 2).toUpperCase()}
+            </span>
+            <span className="font-semibold">{g.name}</span>
+            <span className="text-xs text-muted">{g._count.members} members</span>
+            {!isMember && (
+              <button className="btn-lime ml-auto h-8 text-xs" onClick={() => (me ? join.mutate() : login())}>
+                Join
+              </button>
+            )}
+          </div>
+          <div className="scroll-thin -mx-4 flex gap-1.5 overflow-x-auto px-4">
+            {text.map((c) => (
+              <button key={c.id} onClick={() => setChannelId(c.id)} className={`${channel?.id === c.id ? 'chip-on' : 'chip'} shrink-0`}>
+                #{c.name}
+              </button>
+            ))}
+            {voice.map((c) => (
+              <button key={c.id} onClick={() => (me ? startVoice.mutate(c.id) : login())} className="chip shrink-0 gap-1.5 border-violet-line text-violet-2">
+                <Svg d={Icon.mic} size={13} color="#B9AEFF" />
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
         {channel && (
           <>
-            <div className="flex items-center gap-2.5 border-b border-line px-5 py-3.5">
+            <div className="hidden items-center gap-2.5 border-b border-line px-5 py-3.5 md:flex">
               <span className="num text-lg text-faint">#</span>
               <h1 className="text-[17px] font-semibold">{channel.name}</h1>
               <span className="truncate text-[13px] text-muted">{channel.topic}</span>
             </div>
             {g.rules && (
-              <div className="mx-5 mt-3.5 flex items-center gap-2.5 rounded-[14px] border border-[#2E2850] bg-violet-dim px-3.5 py-3 text-[13px] text-[#D9D2FF]">
+              <div className="mx-4 mt-3 hidden items-center gap-2.5 rounded-[14px] md:mx-5 md:mt-3.5 md:flex border border-[#2E2850] bg-violet-dim px-3.5 py-3 text-[13px] text-[#D9D2FF]">
                 <Svg d={Icon.pin} size={16} color="#B9AEFF" />
                 {g.rules}
               </div>
@@ -148,6 +178,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
           );
         })}
       </aside>
+    </div>
     </div>
   );
 }

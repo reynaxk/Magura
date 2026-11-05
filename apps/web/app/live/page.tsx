@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { SocialTabs } from '@/components/header';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
 import { Avatar, Empty } from '@/components/ui';
@@ -34,7 +35,9 @@ export default function LivePage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 p-6">
+    <>
+    <SocialTabs />
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 md:p-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[30px] font-semibold tracking-tight">Live</h1>
         <span className="text-sm text-muted">Traders streaming their charts, entries and Q&A.</span>
@@ -76,5 +79,6 @@ export default function LivePage() {
         ))}
       </div>
     </div>
+    </>
   );
 }

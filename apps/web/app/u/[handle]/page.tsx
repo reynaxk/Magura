@@ -56,7 +56,7 @@ export default function ProfilePage({ params }: { params: Promise<{ handle: stri
   if (profile.isError) return <Empty title="Trader not found" />;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-start gap-5 p-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-start gap-5 p-4 md:p-6">
       <div className="flex min-w-0 flex-[999_1_640px] flex-col gap-5">
         <section className="panel overflow-hidden">
           <div className="h-24 border-b border-line bg-lime-dim" />

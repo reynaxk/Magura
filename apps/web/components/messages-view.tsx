@@ -9,6 +9,7 @@ import { useSession } from '@/lib/session';
 import { useSocketEvent } from '@/lib/socket';
 import { ChatPanel } from './chat-panel';
 import { toast } from './toaster';
+import { SocialTabs } from './header';
 import { Avatar, Empty, Icon, Svg } from './ui';
 
 interface Convo {
@@ -56,8 +57,10 @@ export function MessagesView({ roomId }: { roomId?: string }) {
   const list = (convos.data ?? []).filter((c) => (filter === 'requests' ? !c.accepted : filter === 'unread' ? c.unread > 0 && c.accepted : c.accepted));
 
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-wrap">
-      <aside aria-label="Conversations" className="flex w-full max-w-[360px] shrink-0 flex-col border-r border-line bg-bar">
+    <div className="flex h-app flex-col">
+    {!roomId && <SocialTabs />}
+    <div className="flex min-h-0 flex-1">
+      <aside aria-label="Conversations" className={`w-full shrink-0 flex-col border-r border-line bg-bar md:flex md:max-w-[360px] ${roomId ? 'hidden' : 'flex'}`}>
         <div className="flex flex-col gap-3 p-4">
           <h1 className="text-[22px] font-semibold">Messages</h1>
           <form
@@ -103,10 +106,13 @@ export function MessagesView({ roomId }: { roomId?: string }) {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className={`min-w-0 flex-1 flex-col md:flex ${roomId ? 'flex' : 'hidden'}`}>
         {roomId && current ? (
           <>
-            <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
+            <div className="flex items-center gap-3 border-b border-line px-4 py-3 md:px-5 md:py-3.5">
+              <Link href="/messages" aria-label="Back to messages" className="flex h-9 w-9 items-center justify-center rounded-xl border border-line-2 bg-raised md:hidden">
+                <Svg d={Icon.back} size={16} />
+              </Link>
               <Avatar name={current.with?.handle ?? '?'} src={current.with?.avatarUrl} size={40} />
               <Link href={`/u/${current.with?.handle}`} className="flex flex-col">
                 <span className="font-semibold">{current.with?.displayName ?? current.with?.handle}</span>
@@ -132,6 +138,7 @@ export function MessagesView({ roomId }: { roomId?: string }) {
           <Empty title={roomId ? 'Conversation not found' : 'Pick a conversation'}>Share trades, voice notes and jump on a call from any DM.</Empty>
         )}
       </main>
+    </div>
     </div>
   );
 }

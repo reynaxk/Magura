@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CHAIN_IDS, CHAINS, fmtAge, fmtUsd, roomIds, type ChainId, type SwapTx, type TrenchStage, type TrenchToken } from '@magura/shared';
@@ -25,6 +26,13 @@ export default function TrenchesPage() {
   const [paused, setPaused] = useState(false);
   const [selected, setSelected] = useState<TrenchToken | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const [mobileStage, setMobileStage] = useState<TrenchStage>('new');
+  const router = useRouter();
+  const pick = (t: TrenchToken) => {
+    // phones: open the token page (chart + room); desktop: show it in the side panel
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) router.push(`/t/${t.chain}/${t.address}`);
+    else setSelected(t);
+  };
   const [, tick] = useState(0);
   const chainKey = chains.join(',');
 
@@ -90,8 +98,8 @@ export default function TrenchesPage() {
   const sel = selected ?? results[1].data?.[0] ?? results[0].data?.[0] ?? null;
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-line px-6 py-4">
+    <div className="flex min-h-app flex-col">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 md:px-6 md:py-4">
         <h1 className="text-[22px] font-semibold tracking-tight">Trenches</h1>
         <button
           onClick={() => setPaused((p) => !p)}
@@ -100,7 +108,7 @@ export default function TrenchesPage() {
           <span className={`h-1.5 w-1.5 rounded-full ${paused ? 'bg-amber' : 'bg-lime'}`} />
           {paused ? 'Paused' : 'Live'}
         </button>
-        <div role="group" aria-label="Chains" className="ml-2 flex flex-wrap gap-1.5">
+        <div role="group" aria-label="Chains" className="scroll-thin -mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto px-4 md:mx-0 md:ml-2 md:w-auto md:flex-wrap md:px-0">
           {CHAIN_IDS.map((c) => {
             const on = chains.includes(c);
             return (
@@ -115,7 +123,7 @@ export default function TrenchesPage() {
             );
           })}
         </div>
-        <span className="ml-auto flex items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted">
+        <span className="ml-auto hidden items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted lg:flex">
           <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy uses your amounts from{' '}
           <Link href="/settings" className="text-lime">
             Settings
@@ -123,28 +131,44 @@ export default function TrenchesPage() {
         </span>
       </div>
 
+      <div role="tablist" aria-label="Stage" className="grid grid-cols-3 gap-1 border-b border-line bg-bar p-2 lg:hidden">
+        {STAGES.map((s, i) => (
+          <button
+            key={s.id}
+            role="tab"
+            aria-selected={mobileStage === s.id}
+            onClick={() => setMobileStage(s.id)}
+            className={`flex h-10 items-center justify-center gap-1.5 rounded-[10px] text-xs font-semibold ${mobileStage === s.id ? 'bg-text text-bg' : 'text-text-2'}`}
+          >
+            <span className="h-2 w-2 rounded-[3px]" style={{ background: s.accent }} />
+            {s.id === 'almost' ? 'Almost' : s.title}
+            <span className="num opacity-60">{results[i].data?.length ?? 0}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex min-h-0 flex-1 flex-wrap">
         <div className="grid min-w-0 flex-[999_1_820px] grid-cols-[repeat(auto-fit,minmax(300px,1fr))]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           {STAGES.map((s, i) => (
-            <section key={s.id} aria-label={s.title} className="flex min-w-0 flex-col border-r border-line">
-              <div className="flex items-center gap-2.5 border-b border-line bg-bar px-4 py-3.5">
+            <section key={s.id} aria-label={s.title} className={`min-w-0 flex-col border-line lg:flex lg:border-r ${mobileStage === s.id ? 'flex' : 'hidden'}`}>
+              <div className="hidden items-center gap-2.5 border-b border-line bg-bar px-4 py-3.5 lg:flex">
                 <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.accent }} />
                 <h2 className="text-[15px] font-semibold">{s.title}</h2>
                 <span className="num rounded-md border border-line-2 px-1.5 text-[11px] text-muted">{results[i].data?.length ?? 0}</span>
                 <span className="ml-auto text-[11px] text-muted">{s.hint}</span>
               </div>
-              <div className="scroll-thin flex max-h-[calc(100vh-190px)] flex-col gap-2 overflow-y-auto p-2.5">
+              <div className="scroll-thin flex flex-col gap-2 p-2.5 lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto">
                 {results[i].isLoading && Array.from({ length: 5 }).map((_, k) => <div key={k} className="h-[118px] animate-pulse rounded-2xl bg-panel" />)}
                 {results[i].data?.length === 0 && <p className="p-6 text-center text-sm text-muted">Nothing here yet — tokens stream in live.</p>}
                 {results[i].data?.map((t) => (
-                  <TokenCard key={`${t.chain}:${t.address}`} t={t} accent={s.accent} selected={sel?.address === t.address} onSelect={() => setSelected(t)} onBuy={() => quickBuy(t)} buying={buying === t.address} />
+                  <TokenCard key={`${t.chain}:${t.address}`} t={t} accent={s.accent} selected={sel?.address === t.address} onSelect={() => pick(t)} onBuy={() => quickBuy(t)} buying={buying === t.address} />
                 ))}
               </div>
             </section>
           ))}
         </div>
 
-        <aside aria-label="Coin room" className="flex max-h-[calc(100vh-130px)] min-w-0 flex-[1_1_320px] flex-col bg-bar lg:sticky lg:top-16 lg:max-w-[360px]">
+        <aside aria-label="Coin room" className="hidden max-h-[calc(100vh-130px)] min-w-0 flex-[1_1_320px] flex-col bg-bar lg:sticky lg:top-16 lg:flex lg:max-w-[360px]">
           {sel ? (
             <>
               <div className="flex flex-col gap-3.5 border-b border-line p-4">

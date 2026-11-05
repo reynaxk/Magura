@@ -88,7 +88,7 @@ export default function PortfolioPage() {
   const palette = ['#E9B07F', '#8FC6E6', '#9D8CFF', '#A2D9BD', '#E3CD8A', '#4A5162'];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 p-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 p-4 md:p-6">
       {!!pending.data?.length && (
         <section className="panel flex flex-col gap-3 border-lime-line! p-5">
           <h2 className="text-[17px] font-semibold">Copies waiting for you</h2>
@@ -176,7 +176,7 @@ export default function PortfolioPage() {
               </tbody>
             </table>
           ) : (
-            <Empty title="No holdings yet">Buy on the Terminal or Trenches, or copy a trader.</Empty>
+            <Empty title="No holdings yet">Buy on Hunt or Trenches, or copy a trader.</Empty>
           )}
         </section>
 

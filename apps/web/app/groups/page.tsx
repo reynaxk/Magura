@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { SocialTabs } from '@/components/header';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
 import { Avatar, Empty } from '@/components/ui';
@@ -37,7 +38,9 @@ export default function GroupsPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 p-6">
+    <>
+    <SocialTabs />
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 md:p-6 p-4 md:p-6">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[30px] font-semibold tracking-tight">Groups</h1>
@@ -76,6 +79,7 @@ export default function GroupsPage() {
       {!!mine.data?.length && <GroupGrid title="Your groups" groups={mine.data} />}
       <GroupGrid title="Discover" groups={discover.data ?? []} loading={discover.isLoading} />
     </div>
+    </>
   );
 }
 

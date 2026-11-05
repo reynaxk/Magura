@@ -6,7 +6,7 @@ export default function NotFound() {
       <span className="num text-xs tracking-[0.2em] text-lime">404</span>
       <h1 className="text-2xl font-semibold">Nothing here</h1>
       <Link href="/" className="btn-lime">
-        Back to the terminal
+        Back to Hunt
       </Link>
     </div>
   );

@@ -94,7 +94,7 @@ export default function StreamPage({ params }: { params: Promise<{ id: string }>
   const main = tracks.screen ?? tracks.video ?? null;
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] flex-wrap gap-4 p-5">
+    <div className="flex min-h-app flex-wrap gap-4 p-5">
       <div className="flex min-w-0 flex-[999_1_640px] flex-col gap-4">
         <div className="relative">
           {offline ? (

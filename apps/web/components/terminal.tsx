@@ -45,9 +45,9 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
   const coinRoom = roomIds.coin(chain, address);
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] flex-wrap">
-      <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-5">
-        <section aria-label="Chart" className="panel flex flex-col gap-3.5 p-5">
+    <div className="flex min-h-app flex-wrap">
+      <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-3 md:p-5">
+        <section aria-label="Chart" className="panel flex flex-col gap-3.5 p-4 md:p-5">
           <div className="flex flex-wrap items-center gap-5">
             <div className="flex items-center gap-3">
               <Avatar name={symbol} src={pair?.imageUrl ?? info.data?.token?.imageUrl} size={40} shape="circle" />
@@ -113,7 +113,7 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
         </div>
       </div>
 
-      <aside aria-label="Live chat" className="flex max-h-[calc(100vh-64px)] min-w-0 flex-[1_1_340px] flex-col border-l border-line bg-bar lg:sticky lg:top-16 lg:max-w-[380px]">
+      <aside aria-label="Live chat" className="flex h-[75dvh] min-w-0 flex-[1_1_340px] flex-col border-t border-line bg-bar lg:sticky lg:top-16 lg:h-auto lg:max-h-app lg:max-w-[380px] lg:border-l lg:border-t-0">
         <div role="tablist" aria-label="Chat rooms" className="flex gap-1 border-b border-line p-3">
           {[
             ['coin', `$${symbol}`],

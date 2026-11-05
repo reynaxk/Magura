@@ -11,7 +11,7 @@ import { Wordmark } from './logo';
 import { Avatar, Icon, Svg } from './ui';
 
 const NAV = [
-  { href: '/', label: 'Terminal' },
+  { href: '/', label: 'Hunt' },
   { href: '/trenches', label: 'Trenches' },
   { href: '/copy', label: 'Copy' },
   { href: '/groups', label: 'Groups' },
@@ -34,11 +34,17 @@ export function Header() {
   if (path?.startsWith('/onboarding')) return null;
 
   return (
-    <header className="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-5 border-b border-line bg-bar/95 px-6 py-3 backdrop-blur">
+    <>
+    <header className="sticky top-0 z-40 flex min-h-14 items-center gap-5 border-b border-line bg-bar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-wrap md:px-6 md:py-3">
       <Link href="/" aria-label="Magura home">
-        <Wordmark />
+        <span className="md:hidden">
+          <Wordmark compact />
+        </span>
+        <span className="hidden md:inline">
+          <Wordmark />
+        </span>
       </Link>
-      <nav aria-label="Sections" className="flex flex-wrap gap-0.5">
+      <nav aria-label="Sections" className="hidden flex-wrap gap-0.5 md:flex">
         {NAV.map((n) => {
           const active = n.href === '/' ? path === '/' || path?.startsWith('/t/') : path?.startsWith(n.href);
           return (
@@ -64,9 +70,9 @@ export function Header() {
           </Link>
         )}
         {me ? (
-          <Link href="/settings" className="flex h-10 items-center gap-2.5 rounded-xl border border-line-2 bg-raised py-1 pl-1 pr-3 hover:bg-hover">
+          <Link href="/settings" aria-label="Settings" className="flex h-10 items-center gap-2.5 rounded-xl border border-line-2 bg-raised p-1 hover:bg-hover sm:pr-3">
             <Avatar name={me.handle} src={me.avatarUrl} size={30} />
-            <span className="text-[13px] font-semibold">@{me.handle}</span>
+            <span className="hidden text-[13px] font-semibold sm:inline">@{me.handle}</span>
           </Link>
         ) : (
           <button className="btn-lime" onClick={login} disabled={!ready}>
@@ -76,6 +82,8 @@ export function Header() {
       </div>
       {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
     </header>
+    <BottomNav path={path ?? '/'} />
+    </>
   );
 }
 
@@ -126,6 +134,57 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
           {debounced.length >= 2 && res.data?.length === 0 && <li className="p-6 text-center text-sm text-muted">No tokens found</li>}
         </ul>
       </div>
+    </div>
+  );
+}
+
+const TABS = [
+  { href: '/', label: 'Hunt', d: 'M3 17l5-5 4 4 9-9M15 7h6v6', match: (p: string) => p === '/' || p.startsWith('/t/') },
+  { href: '/trenches', label: 'Trenches', d: 'M13 2L4 14h7l-1 8 9-12h-7z', match: (p: string) => p.startsWith('/trenches') },
+  { href: '/copy', label: 'Copy', d: 'M8 8h11v11H8zM5 16V5h11', match: (p: string) => p.startsWith('/copy') || p.startsWith('/u/') },
+  {
+    href: '/messages',
+    label: 'Social',
+    d: 'M4 5h16v11H9l-5 4z',
+    match: (p: string) => p.startsWith('/messages') || p.startsWith('/groups') || p.startsWith('/live') || p.startsWith('/call'),
+  },
+  { href: '/portfolio', label: 'Wallet', d: 'M3 7h18v13H3zM16 13h2M3 7l3-4h12l3 4', match: (p: string) => p.startsWith('/portfolio') || p.startsWith('/settings') || p.startsWith('/rewards') },
+];
+
+/** Phone navigation: five tabs pinned to the bottom of the screen. */
+function BottomNav({ path }: { path: string }) {
+  return (
+    <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-bar/95 px-1 pb-[max(env(safe-area-inset-bottom),8px)] pt-1.5 backdrop-blur md:hidden">
+      {TABS.map((t) => {
+        const on = t.match(path);
+        return (
+          <Link key={t.href} href={t.href} aria-current={on ? 'page' : undefined} className={`flex flex-col items-center gap-1 py-1 text-[10px] font-semibold ${on ? 'text-lime' : 'text-muted'}`}>
+            <span className={`flex h-7 w-11 items-center justify-center rounded-[10px] ${on ? 'bg-lime-dim' : ''}`}>
+              <Svg d={t.d} size={20} />
+            </span>
+            {t.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Social sub-navigation for phones (Messages · Groups · Live share one tab). */
+export function SocialTabs() {
+  const path = usePathname() ?? '';
+  const items = [
+    ['/messages', 'Messages'],
+    ['/groups', 'Groups'],
+    ['/live', 'Live'],
+  ] as const;
+  return (
+    <div role="tablist" aria-label="Social" className="flex gap-1.5 border-b border-line px-4 py-2.5 md:hidden">
+      {items.map(([href, label]) => (
+        <Link key={href} href={href} role="tab" aria-selected={path.startsWith(href)} className={path.startsWith(href) ? 'chip-on' : 'chip'}>
+          {label}
+        </Link>
+      ))}
     </div>
   );
 }

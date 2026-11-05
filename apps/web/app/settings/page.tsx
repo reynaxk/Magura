@@ -74,11 +74,11 @@ export default function SettingsPage() {
     );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-start gap-6 p-6">
-      <nav aria-label="Settings sections" className="flex max-w-[260px] flex-[1_1_220px] flex-col gap-1">
-        <h1 className="mb-3 text-[26px] font-semibold tracking-tight">Settings</h1>
+    <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-start gap-6 p-4 md:p-6">
+      <nav aria-label="Settings sections" className="scroll-thin flex w-full gap-1 overflow-x-auto md:w-auto md:max-w-[260px] md:flex-[1_1_220px] md:flex-col">
+        <h1 className="mb-3 hidden text-[26px] font-semibold tracking-tight md:block">Settings</h1>
         {SECTIONS.map(([id, label]) => (
-          <button key={id} onClick={() => setSec(id)} className={`h-11 rounded-xl px-3.5 text-left text-sm font-semibold ${sec === id ? 'bg-hover text-text' : 'text-muted hover:text-text'}`}>
+          <button key={id} onClick={() => setSec(id)} className={`h-11 shrink-0 rounded-xl px-3.5 text-left text-sm font-semibold ${sec === id ? 'bg-hover text-text' : 'text-muted hover:text-text'}`}>
             {label}
           </button>
         ))}
@@ -87,7 +87,7 @@ export default function SettingsPage() {
         </button>
       </nav>
 
-      <section className="panel flex min-w-0 flex-[999_1_600px] flex-col gap-5 p-6">
+      <section className="panel flex min-w-0 flex-[999_1_600px] flex-col gap-5 p-4 md:p-6">
         {sec === 'profile' && (
           <>
             <h2 className="text-lg font-semibold">Profile</h2>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
                 <input className="input" value={profile.avatarUrl} onChange={(e) => setProfile({ ...profile, avatarUrl: e.target.value })} placeholder="https://…" />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-xs text-muted">
                 Display name
                 <input className="input" value={profile.displayName} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} maxLength={40} />
@@ -194,7 +194,7 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold">Copy defaults</h2>
               <p className="text-[13px] text-muted">Used for every new trader you copy. Change them per trader on their profile.</p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
                 ['copyBudgetUsd', 'Total copy budget ($)'],
                 ['copyMaxPerBuyUsd', 'Max per copied buy ($)'],

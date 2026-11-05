@@ -16,10 +16,10 @@ export default function CopyPage() {
   const podium = rows.slice(0, 3);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-[34px] font-semibold tracking-tight">Copy the best. Automatically.</h1>
+          <h1 className="text-[26px] font-semibold tracking-tight md:text-[34px]">Copy the best. Automatically.</h1>
           <p className="text-sm text-muted">Pick a trader, set your limits, and every spot buy and sell mirrors into your wallet.</p>
         </div>
         <div className="ml-auto">

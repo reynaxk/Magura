@@ -127,3 +127,23 @@ button:disabled {
     scrollbar-width: thin;
     scrollbar-color: #2a303c transparent;
 }
+
+/* App viewport height minus header (and the bottom tab bar on phones) */
+@utility h-app {
+  height: calc(100dvh - 56px - 76px);
+  @media (width >= 48rem) {
+    height: calc(100vh - 64px);
+  }
+}
+@utility max-h-app {
+  max-height: calc(100dvh - 56px - 76px);
+  @media (width >= 48rem) {
+    max-height: calc(100vh - 64px);
+  }
+}
+@utility min-h-app {
+  min-height: calc(100dvh - 56px - 76px);
+  @media (width >= 48rem) {
+    min-height: calc(100vh - 64px);
+  }
+}

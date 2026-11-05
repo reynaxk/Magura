@@ -79,7 +79,7 @@ export class MarketController {
     const chain = parse(zChain, chainRaw);
     const address = addr(chain, rawAddr);
     const [pair, row, risk] = await Promise.all([
-      this.redis.cached(`pair:${chain}:${address}`, 15, () => dexscreener.bestPair(chain, address)),
+      this.redis.cached(`pair:${chain}:${address}`, 15, () => dexscreener.bestPair(chain, address)).catch(() => null),
       this.prisma.db.token.findUnique({ where: { chain_address: { chain, address } } }),
       this.redis.cached(`risk:${chain}:${address}`, 600, () => goplus.tokenRisk(chain, address).catch(() => null)),
     ]);

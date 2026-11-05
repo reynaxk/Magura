@@ -45,7 +45,7 @@ export default function OnboardingPage() {
         <aside className="flex max-w-[360px] flex-[1_1_300px] flex-col gap-8 border-r border-line bg-bar p-8">
           <Wordmark />
           <div className="flex flex-col gap-2">
-            <span className="num text-xs tracking-[0.2em] text-lime">FIND.TRADE.REPEAT</span>
+            
             <span className="text-[28px] font-semibold leading-tight tracking-tight">
               Trade together.
               <br />

@@ -6,7 +6,7 @@ import { CHAIN_IDS, CHAINS, FEE_TIERS, MIN_TRADE_USD, bpsToPct, shortAddr } from
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
-import { Avatar, Empty, Toggle } from '@/components/ui';
+import { Avatar, Empty, Toggle, Icon } from '@/components/ui';
 
 const SECTIONS = [
   ['profile', 'Profile'],
@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
   if (!me)
     return (
-      <Empty title="Log in to change settings">
+      <Empty icon={Icon.globe} title="Log in to change settings">
         <button className="btn-lime mt-3" onClick={login}>
           Log in
         </button>

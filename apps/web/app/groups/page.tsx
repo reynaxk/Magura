@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { SocialTabs } from '@/components/header';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
-import { Avatar, Empty } from '@/components/ui';
+import { Avatar, Empty, Icon } from '@/components/ui';
 
 interface GroupRow {
   id: string;
@@ -77,7 +77,11 @@ export default function GroupsPage() {
       )}
 
       {!!mine.data?.length && <GroupGrid title="Your groups" groups={mine.data} />}
-      <GroupGrid title="Discover" groups={discover.data ?? []} loading={discover.isLoading} />
+      {(() => {
+        const rest = (discover.data ?? []).filter((g) => !mine.data?.some((m) => m.id === g.id));
+        if (!rest.length && mine.data?.length) return null;
+        return <GroupGrid title="Discover" groups={rest} loading={discover.isLoading} />;
+      })()}
     </div>
     </>
   );
@@ -87,7 +91,7 @@ function GroupGrid({ title, groups, loading }: { title: string; groups: GroupRow
   return (
     <section className="flex flex-col gap-3">
       <h2 className="label">{title}</h2>
-      {!loading && groups.length === 0 && <Empty title="No groups yet">Create the first one.</Empty>}
+      {!loading && groups.length === 0 && <Empty icon={Icon.chat} title="No groups yet">Create the first one.</Empty>}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {groups.map((g) => (
           <Link key={g.id} href={`/groups/${g.slug}`} className="card flex items-center gap-3.5 p-4 hover:bg-hover">

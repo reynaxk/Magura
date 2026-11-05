@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { SocialTabs } from '@/components/header';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
-import { Avatar, Empty } from '@/components/ui';
+import { Avatar, Empty, Icon } from '@/components/ui';
 
 interface StreamRow {
   id: string;
@@ -62,7 +62,7 @@ export default function LivePage() {
           </button>
         </form>
       )}
-      {streams.data?.length === 0 && <Empty title="Nobody is live right now">Be the first — share your chart and trade with your followers.</Empty>}
+      {streams.data?.length === 0 && <Empty icon={Icon.video} title="Nobody is live right now">Be the first — share your chart and trade with your followers.</Empty>}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
         {streams.data?.map((s) => (
           <Link key={s.id} href={`/live/${s.id}`} className="card flex flex-col overflow-hidden hover:bg-hover">

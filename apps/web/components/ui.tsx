@@ -116,7 +116,13 @@ function tone(v: number, ok: number, warn: number) {
 }
 
 export function RiskTags({ risk }: { risk: TokenRisk | null }) {
-  if (!risk) return <span className="num text-[10px] text-faint">risk: checking…</span>;
+  if (!risk)
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-line px-1.5 py-0.5 text-[10px] text-faint">
+        <span className="size-1.5 animate-pulse rounded-full bg-faint" />
+        Scanning
+      </span>
+    );
   const tags: { label: string; v: number; ok: number; warn: number }[] = [];
   if (risk.top10Pct != null) tags.push({ label: 'Top10', v: risk.top10Pct, ok: 25, warn: 40 });
   if (risk.devPct != null) tags.push({ label: 'Dev', v: risk.devPct, ok: 3, warn: 6 });
@@ -130,15 +136,22 @@ export function RiskTags({ risk }: { risk: TokenRisk | null }) {
       ))}
       {risk.honeypot && <span className="num rounded-md border border-down-line px-1.5 py-0.5 text-[10px] text-down-2">HONEYPOT</span>}
       {risk.mintable && <span className="num rounded-md border border-[#4A3A1E] px-1.5 py-0.5 text-[10px] text-amber">Mintable</span>}
+      {!tags.length && !risk.honeypot && !risk.mintable && <span className="rounded-md border border-line px-1.5 py-0.5 text-[10px] text-muted">No flags</span>}
     </span>
   );
 }
 
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+export function Empty({ title, children, icon, action }: { title: string; children?: ReactNode; icon?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+      {icon && (
+        <span className="mb-2 flex size-12 items-center justify-center rounded-2xl border border-line bg-raised text-muted">
+          <Svg d={icon} size={20} color="currentColor" />
+        </span>
+      )}
       <span className="text-sm font-semibold">{title}</span>
       {children && <span className="max-w-sm text-sm text-muted">{children}</span>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }
@@ -186,5 +199,18 @@ export function Svg({ d, size = 18, color = 'currentColor', label }: { d: string
     >
       <path d={d} />
     </svg>
+  );
+}
+
+export function ChatBadge({ count }: { count: number }) {
+  const hot = count > 0;
+  return (
+    <span
+      title={`${count} messages in the last hour`}
+      className={`num inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] ${hot ? 'border-violet-line bg-violet-dim text-violet-2' : 'border-line text-faint'}`}
+    >
+      <Svg d={Icon.chat} size={11} color={hot ? '#B9AEFF' : 'currentColor'} />
+      {count}
+    </span>
   );
 }

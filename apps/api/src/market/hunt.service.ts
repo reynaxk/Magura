@@ -29,7 +29,7 @@ export class HuntService {
   async list(q: HuntQuery, viewerId: string | null): Promise<{ items: HuntToken[]; total: number }> {
     const f = q.filter;
     const pool = await this.prisma.db.token.findMany({
-      where: { chain: { in: f.chains } },
+      where: { chain: { in: f.chains }, ...(q.sort === 'new' ? {} : { priceUsd: { not: null } }) },
       orderBy: q.sort === 'new' ? { createdAt: 'desc' } : { volumeUsd: { sort: 'desc', nulls: 'last' } },
       take: 600,
     });

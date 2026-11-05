@@ -14,7 +14,7 @@ interface TokenInfo {
   chain: ChainId;
   address: string;
   pair: PairSummary | null;
-  token: { symbol: string; name: string; imageUrl: string | null; launchpad: string | null; bondingPct: number | null; pairAddress: string | null } | null;
+  token: { symbol: string; name: string; imageUrl: string | null; launchpad: string | null; bondingPct: number | null; pairAddress: string | null; priceUsd?: number | null; priceChange24h?: number | null; marketCapUsd?: number | null; volumeUsd?: number | null; liquidityUsd?: number | null } | null;
   risk: TokenRisk | null;
 }
 
@@ -43,6 +43,7 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
   const name = pair?.baseToken.name ?? info.data?.token?.name ?? '';
   const pool = pair?.pairAddress ?? info.data?.token?.pairAddress ?? null;
   const coinRoom = roomIds.coin(chain, address);
+  const tok = info.data?.token;
 
   return (
     <div className="flex min-h-app flex-wrap">
@@ -62,17 +63,17 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
               <Skeleton className="h-10 w-40" />
             ) : (
               <div className="flex flex-col">
-                <span className="num text-[26px] font-semibold tracking-tight">${fmtPrice(pair?.priceUsd)}</span>
+                <span className="num text-[26px] font-semibold tracking-tight">${fmtPrice(pair?.priceUsd ?? tok?.priceUsd)}</span>
                 <span className="text-xs">
-                  <Delta value={pair?.priceChange24h} /> <span className="text-muted">24h</span>
+                  <Delta value={pair?.priceChange24h ?? tok?.priceChange24h} /> <span className="text-muted">24h</span>
                 </span>
               </div>
             )}
-            <dl className="num flex gap-6 text-xs">
+            <dl className="num flex gap-6 text-xs [&_dt]:text-[11px]">
               {[
-                ['Mkt cap', fmtUsd(pair?.marketCap ?? pair?.fdv)],
-                ['24h Vol', fmtUsd(pair?.volume24h)],
-                ['Liquidity', fmtUsd(pair?.liquidityUsd)],
+                ['Mkt cap', fmtUsd(pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd)],
+                ['24h Vol', fmtUsd(pair?.volume24h ?? tok?.volumeUsd)],
+                ['Liquidity', fmtUsd(pair?.liquidityUsd ?? tok?.liquidityUsd)],
               ].map(([k, v]) => (
                 <div key={k} className="flex flex-col gap-0.5">
                   <dt className="text-muted">{k}</dt>
@@ -154,13 +155,14 @@ function Predictions({ symbol }: { symbol: string }) {
     queryFn: () => api<{ id: string; question: string; url: string; yesPrice: number | null }[]>(`/market/predictions?q=${encodeURIComponent(symbol.toLowerCase())}`),
     staleTime: 120_000,
   });
+  if (!q.data?.length) return null;
   return (
     <section aria-label="Predictions" className="panel flex min-w-0 flex-[999_1_380px] flex-col gap-3 p-[18px]">
       <div className="flex items-center gap-2">
         <span className="text-[15px] font-semibold">Predictions</span>
         <span className="text-xs text-muted">from Polymarket</span>
       </div>
-      {q.data?.length ? (
+      {(
         <ul className="flex flex-col">
           {q.data.slice(0, 4).map((m) => (
             <li key={m.id} className="flex items-center gap-3 border-b border-line py-2.5 last:border-0">
@@ -171,8 +173,6 @@ function Predictions({ symbol }: { symbol: string }) {
             </li>
           ))}
         </ul>
-      ) : (
-        <span className="text-sm text-muted">{q.isLoading ? 'Loading…' : 'No open markets for this token'}</span>
       )}
     </section>
   );

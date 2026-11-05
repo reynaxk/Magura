@@ -7,7 +7,7 @@ import { fmtUsd } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
-import { Avatar, Empty, Segmented, Toggle } from '@/components/ui';
+import { Avatar, Empty, Segmented, Toggle, Icon } from '@/components/ui';
 
 interface Profile {
   id: string;
@@ -53,7 +53,7 @@ export default function ProfilePage({ params }: { params: Promise<{ handle: stri
     onSuccess: (r) => (window.location.href = `/messages/${encodeURIComponent(r.roomId)}`),
   });
 
-  if (profile.isError) return <Empty title="Trader not found" />;
+  if (profile.isError) return <Empty icon={Icon.search} title="Trader not found" />;
 
   return (
     <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-start gap-5 p-4 md:p-6">
@@ -103,7 +103,7 @@ export default function ProfilePage({ params }: { params: Promise<{ handle: stri
         <section className="panel px-5 pb-3 pt-4">
           <h2 className="mb-2 text-[17px] font-semibold">Trade history</h2>
           {p && !p.publicPnl ? (
-            <Empty title="Private">This trader keeps their trades private.</Empty>
+            <Empty icon={Icon.globe} title="Private">This trader keeps their trades private.</Empty>
           ) : trades.data?.length ? (
             <table className="w-full text-[13px]">
               <thead>
@@ -131,7 +131,7 @@ export default function ProfilePage({ params }: { params: Promise<{ handle: stri
               </tbody>
             </table>
           ) : (
-            <Empty title="No trades yet" />
+            <Empty icon={Icon.trend} title="No trades yet" />
           )}
         </section>
       </div>

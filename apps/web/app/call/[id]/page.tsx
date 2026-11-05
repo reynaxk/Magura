@@ -103,13 +103,13 @@ export default function CallPage({ params }: { params: Promise<{ id: string }> }
 
   if (!me)
     return (
-      <Empty title="Log in to join the call">
+      <Empty icon={Icon.phone} title="Log in to join the call">
         <button className="btn-lime mt-3" onClick={login}>
           Log in
         </button>
       </Empty>
     );
-  if (state === 'ended') return <Empty title="Call ended" />;
+  if (state === 'ended') return <Empty icon={Icon.end} title="Call ended" />;
 
   const people = Object.values(remotes);
   const screen = people.find((p) => p.screen);

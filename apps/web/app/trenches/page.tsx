@@ -11,7 +11,7 @@ import { useSession } from '@/lib/session';
 import { useSocket, useSocketEvent } from '@/lib/socket';
 import { ChatPanel } from '@/components/chat-panel';
 import { toast } from '@/components/toaster';
-import { Avatar, Icon, RiskTags, Svg } from '@/components/ui';
+import { Avatar, Icon, RiskTags, Svg, ChatBadge } from '@/components/ui';
 
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
   { id: 'new', title: 'New Pairs', hint: 'just launched', accent: '#8FC6E6' },
@@ -265,10 +265,7 @@ function TokenCard({
             <span className="uppercase">{t.chain === 'ethereum' ? 'eth' : t.chain}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="flex items-center gap-1 rounded-md border border-violet-line bg-violet-dim px-1.5 text-[11px] text-violet-2">
-              <Svg d={Icon.chat} size={11} color="#B9AEFF" />
-              {t.chatCount}
-            </span>
+            <ChatBadge count={t.chatCount} />
             {friends.length > 0 && (
               <span className="flex items-center gap-1.5">
                 <span className="flex">

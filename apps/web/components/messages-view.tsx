@@ -1,4 +1,5 @@
 'use client';
+import { fmtAge } from '@magura/shared';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -47,7 +48,7 @@ export function MessagesView({ roomId }: { roomId?: string }) {
 
   if (!me)
     return (
-      <Empty title="Log in to see your messages">
+      <Empty icon={Icon.chat} title="Log in to see your messages">
         <button className="btn-lime mt-3" onClick={login}>
           Log in
         </button>
@@ -93,7 +94,7 @@ export function MessagesView({ roomId }: { roomId?: string }) {
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-baseline gap-2">
                   <span className="text-sm font-semibold">{c.with?.displayName ?? c.with?.handle}</span>
-                  {c.lastMessage && <span className="ml-auto text-[11px] text-faint">{new Date(c.lastMessage.at).toLocaleDateString()}</span>}
+                  {c.lastMessage && <span className="ml-auto text-[11px] text-faint">{fmtAge(c.lastMessage.at)}</span>}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className={`truncate text-xs ${c.unread ? 'text-text' : 'text-muted'}`}>{c.lastMessage ? `${c.lastMessage.from === me.handle ? 'You: ' : ''}${c.lastMessage.text}` : 'No messages yet'}</span>
@@ -135,7 +136,9 @@ export function MessagesView({ roomId }: { roomId?: string }) {
             <ChatPanel key={roomId} roomId={roomId} header={false} placeholder={`Message ${current.with?.handle}`} className="min-h-0 flex-1 pt-4" />
           </>
         ) : (
-          <Empty title={roomId ? 'Conversation not found' : 'Pick a conversation'}>Share trades, voice notes and jump on a call from any DM.</Empty>
+          <div className="flex flex-1 items-center justify-center pb-16">
+            <Empty icon={Icon.chat} title={roomId ? 'Conversation not found' : 'Pick a conversation'}>Share trades, voice notes and jump on a call from any DM.</Empty>
+          </div>
         )}
       </main>
     </div>

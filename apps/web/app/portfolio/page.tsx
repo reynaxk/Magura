@@ -6,7 +6,7 @@ import { fmtUsd, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from '@/components/toaster';
-import { Avatar, Delta, Empty } from '@/components/ui';
+import { Avatar, Delta, Empty, Icon } from '@/components/ui';
 
 interface Portfolio {
   realizedUsd: number;
@@ -74,7 +74,7 @@ export default function PortfolioPage() {
 
   if (!me)
     return (
-      <Empty title="Log in to see your portfolio">
+      <Empty icon={Icon.trend} title="Log in to see your portfolio">
         <button className="btn-lime mt-3" onClick={login}>
           Log in
         </button>
@@ -176,7 +176,7 @@ export default function PortfolioPage() {
               </tbody>
             </table>
           ) : (
-            <Empty title="No holdings yet">Buy on Hunt or Trenches, or copy a trader.</Empty>
+            <Empty icon={Icon.trend} title="No holdings yet">Buy on Hunt or Trenches, or copy a trader.</Empty>
           )}
         </section>
 

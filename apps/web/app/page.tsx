@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
 import { useSession } from '@/lib/session';
 import type { LeaderRow } from '@/components/terminal';
-import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg } from '@/components/ui';
+import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg, ChatBadge } from '@/components/ui';
 
 type Sort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
 
@@ -87,7 +87,7 @@ export default function HuntPage() {
                 </span>
               </button>
             ))}
-            {search.data?.length === 0 && <Empty title="No coins found" />}
+            {search.data?.length === 0 && <Empty icon={Icon.search} title="No coins found" />}
             {search.isLoading && <p className="p-4 text-sm text-muted">Searching…</p>}
           </section>
         ) : (
@@ -101,7 +101,7 @@ export default function HuntPage() {
                     <th className="px-2.5 text-right font-medium">Price</th>
                     <th className="px-2.5 text-right font-medium">1h</th>
                     <th className="px-2.5 text-right font-medium">24h</th>
-                    <th className="px-2.5 text-right font-medium">Mkt cap</th>
+                    <th className="whitespace-nowrap px-2.5 text-right font-medium">Mkt cap</th>
                     <th className="px-2.5 text-right font-medium">Volume</th>
                     <th className="px-2.5 text-right font-medium">Liq.</th>
                     <th className="pl-5 font-medium">Room</th>
@@ -139,12 +139,9 @@ export default function HuntPage() {
                       <td className="num px-2.5 text-right">{fmtUsd(t.liquidityUsd)}</td>
                       <td className="pl-5">
                         <span className="flex items-center gap-2">
-                          <span className="flex items-center gap-1 rounded-md border border-violet-line bg-violet-dim px-1.5 text-[11px] text-violet-2">
-                            <Svg d={Icon.chat} size={11} color="#B9AEFF" />
-                            {t.chatCount}
-                          </span>
+                          <ChatBadge count={t.chatCount} />
                           {t.friendsBought.length > 0 && (
-                            <span className="flex" title={`${t.friendsBought.map((f) => f.handle).join(', ')} bought`}>
+                            <span className="mr-1.5 flex" title={`${t.friendsBought.map((f) => f.handle).join(', ')} bought`}>
                               {t.friendsBought.slice(0, 3).map((f) => (
                                 <span key={f.userId} className="-mr-1.5">
                                   <Avatar name={f.handle} src={f.avatarUrl} size={20} shape="circle" ring="#0E1015" />
@@ -200,7 +197,7 @@ export default function HuntPage() {
               ))}
             </ul>
             {list.isLoading && <p className="p-6 text-sm text-muted">Loading coins…</p>}
-            {list.data?.length === 0 && <Empty title="No coins match these filters">Loosen a filter or switch chains.</Empty>}
+            {list.data?.length === 0 && <Empty icon={Icon.search} title="No coins match these filters">Loosen a filter or switch chains.</Empty>}
           </section>
         )}
       </div>

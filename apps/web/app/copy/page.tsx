@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fmtUsd } from '@magura/shared';
 import { api } from '@/lib/api';
 import type { LeaderRow } from '@/components/terminal';
-import { Avatar, Delta, Empty, Segmented } from '@/components/ui';
+import { Avatar, Delta, Empty, Segmented, Icon } from '@/components/ui';
 
 export default function CopyPage() {
   const [days, setDays] = useState<'7' | '30' | '90' | '3650'>('30');
@@ -108,7 +108,7 @@ export default function CopyPage() {
               ))}
             </tbody>
           </table>
-          {!lb.isLoading && rows.length === 0 && <Empty title="No ranked traders yet">Traders appear here once they have closed spot trades in this period and allow copying.</Empty>}
+          {!lb.isLoading && rows.length === 0 && <Empty icon={Icon.trend} title="No ranked traders yet">Traders appear here once they have closed spot trades in this period and allow copying.</Empty>}
         </div>
       </section>
     </div>

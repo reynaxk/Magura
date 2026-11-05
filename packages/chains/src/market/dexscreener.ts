@@ -11,13 +11,13 @@ interface DsPair {
   quoteToken: { address: string; symbol: string };
   priceUsd?: string;
   priceChange?: { h1?: number; h24?: number };
-  volume?: { h24?: number };
+  volume?: { m5?: number; h24?: number };
   liquidity?: { usd?: number };
   fdv?: number;
   marketCap?: number;
   pairCreatedAt?: number;
-  info?: { imageUrl?: string };
-  txns?: { h24?: { buys: number; sells: number } };
+  info?: { imageUrl?: string; websites?: { url: string }[]; socials?: { type?: string; url: string }[] };
+  txns?: { m5?: { buys: number; sells: number }; h24?: { buys: number; sells: number } };
 }
 
 function toSummary(p: DsPair): PairSummary | null {
@@ -33,6 +33,14 @@ function toSummary(p: DsPair): PairSummary | null {
     priceChange24h: num(p.priceChange?.h24),
     priceChange1h: num(p.priceChange?.h1),
     volume24h: num(p.volume?.h24),
+    volume5m: num(p.volume?.m5),
+    buys5m: p.txns?.m5?.buys ?? null,
+    sells5m: p.txns?.m5?.sells ?? null,
+    socials: {
+      x: !!p.info?.socials?.some((x) => x.type === 'twitter' || /x\.com|twitter\.com/.test(x.url)),
+      telegram: !!p.info?.socials?.some((x) => x.type === 'telegram' || /t\.me/.test(x.url)),
+      website: !!p.info?.websites?.length,
+    },
     liquidityUsd: num(p.liquidity?.usd),
     fdv: num(p.fdv),
     marketCap: num(p.marketCap),

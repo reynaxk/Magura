@@ -49,3 +49,25 @@ test('Magura fee tiers by trade size', async () => {
     assert.equal(feeBpsFor('base', usd), bps, `base $${usd}`);
   }
 });
+
+test('coin filters', async () => {
+  const { matchesFilter, EMPTY_FILTER, sourceOf, activeFilterCount } = await import('@magura/shared');
+  const coin = {
+    chain: 'solana' as const, source: 'pumpfun' as const, bonding: 82, ageMin: 12, liquidity: 15000, marketCap: 60000, volume5m: 4000,
+    buys5m: 40, sells5m: 12, holders: 310, top10: 22, dev: 3, snipers: null, change1h: 35, chat: 18,
+    hasX: true, hasTelegram: false, hasWebsite: true, mintable: false, freezable: false, audited: true, friendsBought: true,
+  };
+  assert.equal(matchesFilter(coin, EMPTY_FILTER), true);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, chains: ['base'] }), false);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, sources: ['clanker'] }), false);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, sources: ['pumpfun'] }), true);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, hasTelegram: true }), false);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, devUnder20: true, excludeMintable: true, auditedOnly: true }), true);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, ranges: { bonding: { min: 80 }, netBuys5m: { min: 20 } } }), true);
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, ranges: { marketCap: { max: 50000 } } }), false);
+  // unknown value fails a bound that was set
+  assert.equal(matchesFilter(coin, { ...EMPTY_FILTER, ranges: { snipers: { max: 10 } } }), false);
+  assert.equal(sourceOf(null, 'pumpswap'), 'pumpswap');
+  assert.equal(sourceOf('fourmeme', null), 'fourmeme');
+  assert.equal(activeFilterCount({ ...EMPTY_FILTER, hasX: true, ranges: { liquidity: { min: 1 } } }), 2);
+});

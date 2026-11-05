@@ -12,6 +12,8 @@ export interface TokenRisk {
   freezable: boolean | null;
   buyTax: number | null;
   sellTax: number | null;
+  /** Holder count when the provider reports it. */
+  holders?: number | null;
 }
 
 export interface TrenchToken {
@@ -45,6 +47,10 @@ export interface PairSummary {
   priceUsd: number | null;
   priceChange24h: number | null;
   priceChange1h?: number | null;
+  volume5m?: number | null;
+  buys5m?: number | null;
+  sells5m?: number | null;
+  socials?: { x: boolean; telegram: boolean; website: boolean };
   volume24h: number | null;
   liquidityUsd: number | null;
   fdv: number | null;

@@ -14,6 +14,8 @@ export interface LaunchEvent {
   bondingPct?: number | null;
   /** DEX pair after migration */
   pairAddress?: string;
+  /** Off-chain metadata JSON (image, X, Telegram, website). */
+  metadataUri?: string;
   at: Date;
 }
 

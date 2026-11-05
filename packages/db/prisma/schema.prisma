@@ -138,6 +138,14 @@ model Token {
   priceUsd     Float?
   priceChange1h  Float?
   priceChange24h Float?
+  /// DEX the main pair trades on (raydium, pumpswap, uniswap, …)
+  dex          String?
+  volume5m     Float?
+  buys5m       Int?
+  sells5m      Int?
+  hasX         Boolean @default(false)
+  hasTelegram  Boolean @default(false)
+  hasWebsite   Boolean @default(false)
   pairAddress  String?
   risk         Json? // TokenRisk from GoPlus
   riskCheckedAt DateTime?

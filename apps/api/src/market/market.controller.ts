@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Cron } from '@nestjs/schedule';
 import { dexscreener, fetchNews, geckoterminal, goplus, jupiter, polymarket } from '@magura/chains';
 import type { User } from '@magura/db';
-import { CHAIN_IDS, type ChainId, type Timeframe } from '@magura/shared';
+import { parseFilter, type ChainId, type Timeframe } from '@magura/shared';
 import { CurrentUser, OptionalUser, Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
@@ -21,28 +21,21 @@ export class MarketController {
     private readonly hunt: HuntService,
   ) {}
 
-  /** Hunt: discover coins. Filters + sort; public, personalised when logged in. */
+  /** Hunt: discover coins. `f` = JSON CoinFilter from the Filters panel; `count=1` returns only the match count. */
   @Public()
   @Get('hunt')
-  huntList(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
+  async huntList(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
     const p = parse(
       z.object({
-        chains: z.string().default(CHAIN_IDS.join(',')),
         sort: z.enum(['hot', 'gainers', 'losers', 'volume', 'new']).default('hot'),
-        minMc: z.coerce.number().min(0).optional(),
-        maxMc: z.coerce.number().min(0).optional(),
-        maxAgeH: z.coerce.number().min(0.1).max(24 * 365).optional(),
-        minLiq: z.coerce.number().min(0).optional(),
-        safeOnly: z.enum(['1', '0', 'true', 'false']).optional(),
+        f: z.string().max(4000).optional(),
+        count: z.enum(['1']).optional(),
         limit: z.coerce.number().int().min(1).max(100).default(50),
       }),
       q,
     );
-    const chains = p.chains.split(',').filter((c): c is ChainId => (CHAIN_IDS as string[]).includes(c));
-    return this.hunt.list(
-      { ...p, chains: chains.length ? chains : CHAIN_IDS, sort: p.sort as HuntSort, safeOnly: p.safeOnly === '1' || p.safeOnly === 'true' },
-      user?.id ?? null,
-    );
+    const res = await this.hunt.list({ sort: p.sort as HuntSort, filter: parseFilter(p.f), limit: p.limit }, user?.id ?? null);
+    return p.count ? { total: res.total } : res.items;
   }
 
   @Get('hunt/friends')
@@ -65,17 +58,18 @@ export class MarketController {
 
   @Public()
   @Get('trenches')
-  list(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
+  async list(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
     const p = parse(
       z.object({
-        chains: z.string().default(CHAIN_IDS.join(',')),
         stage: z.enum(['new', 'almost', 'survived']).default('new'),
+        f: z.string().max(4000).optional(),
+        count: z.enum(['1']).optional(),
         limit: z.coerce.number().int().min(1).max(100).default(40),
       }),
       q,
     );
-    const chains = p.chains.split(',').filter((c): c is ChainId => (CHAIN_IDS as string[]).includes(c));
-    return this.trenches.list(chains.length ? chains : CHAIN_IDS, p.stage, p.limit, user?.id ?? null);
+    const res = await this.trenches.list(p.stage, parseFilter(p.f), p.limit, user?.id ?? null);
+    return p.count ? { total: res.total } : res.items;
   }
 
   /** Token page: best pair + Magura snapshot + GoPlus risk. */

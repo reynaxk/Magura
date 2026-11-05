@@ -57,6 +57,7 @@ export class PumpFunFeed implements LaunchpadFeed {
             creator: m.traderPublicKey,
             marketCapUsd: m.marketCapSol ? m.marketCapSol * this.solUsd : null,
             bondingPct: m.vSolInBondingCurve ? pumpBondingPct(m.vSolInBondingCurve) : 0,
+            metadataUri: m.uri,
             at: new Date(),
           });
         } else if ((m.txType === 'buy' || m.txType === 'sell') && m.mint) {
@@ -133,7 +134,7 @@ export async function pumpPortalTradeTx(p: {
 }
 
 /** Token metadata (image) lives at the IPFS uri returned on create. */
-export async function pumpMetadata(uri: string): Promise<{ image?: string } | null> {
+export async function pumpMetadata(uri: string): Promise<{ image?: string; twitter?: string; telegram?: string; website?: string } | null> {
   try {
     return await fetchJson(uri, { timeoutMs: 4000, retries: 0 });
   } catch {

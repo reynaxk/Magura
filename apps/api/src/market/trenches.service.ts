@@ -7,11 +7,13 @@ import {
   evmFactoryFeedsFromEnv,
   geckoterminal,
   goplus,
+  pumpMetadata,
   type LaunchEvent,
   type LaunchpadFeed,
 } from '@magura/chains';
 import type { Chain, Token } from '@magura/db';
-import { CHAIN_IDS, roomIds, type ChainId, type TokenRisk, type TrenchStage, type TrenchToken } from '@magura/shared';
+import { CHAIN_IDS, matchesFilter, roomIds, type ChainId, type CoinFilter, type TokenRisk, type TrenchStage, type TrenchToken } from '@magura/shared';
+import { factsFor } from './filter-facts';
 import { env } from '../config';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
@@ -104,6 +106,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       update: { ...data, stage },
       create: { chain: e.chain as Chain, address: e.address, ...data, stage, createdAt: e.at },
     });
+    if (e.type === 'created' && e.metadataUri) void this.applyMetadata(e.chain as Chain, e.address, e.metadataUri);
     const room = `trenches:${e.chain}`;
     if (e.type === 'created') this.rt.toRoom(room, 'trenches:token', await this.toTrench(token, {}, []));
     else
@@ -114,6 +117,23 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
         marketCapUsd: token.marketCapUsd,
         bondingPct: token.bondingPct,
       });
+  }
+
+  /** Image + socials from the launch metadata (Pump.fun IPFS JSON). */
+  private async applyMetadata(chain: Chain, address: string, uri: string) {
+    const meta = await pumpMetadata(uri);
+    if (!meta) return;
+    await this.prisma.db.token
+      .update({
+        where: { chain_address: { chain, address } },
+        data: {
+          imageUrl: meta.image ?? undefined,
+          hasX: !!meta.twitter,
+          hasTelegram: !!meta.telegram,
+          hasWebsite: !!meta.website,
+        },
+      })
+      .catch(() => undefined);
   }
 
   /** DEX new pools (all chains). Ethereum relies on this entirely. */
@@ -133,6 +153,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
             symbol,
             name,
             pairAddress: p.poolAddress,
+            dex: p.dex,
             marketCapUsd: p.marketCapUsd ?? p.fdvUsd,
             volumeUsd: p.volume24h,
             liquidityUsd: p.liquidityUsd,
@@ -170,6 +191,13 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
           priceUsd: p?.priceUsd ?? t.priceUsd,
           priceChange1h: p?.priceChange1h ?? t.priceChange1h,
           priceChange24h: p?.priceChange24h ?? t.priceChange24h,
+          dex: p?.dex ?? t.dex,
+          volume5m: p?.volume5m ?? t.volume5m,
+          buys5m: p?.buys5m ?? t.buys5m,
+          sells5m: p?.sells5m ?? t.sells5m,
+          hasX: t.hasX || !!p?.socials?.x,
+          hasTelegram: t.hasTelegram || !!p?.socials?.telegram,
+          hasWebsite: t.hasWebsite || !!p?.socials?.website,
           pairAddress: t.pairAddress ?? p?.pairAddress ?? null,
           imageUrl: t.imageUrl ?? p?.imageUrl ?? null,
           // pump.fun tokens that appear on a non-pump DEX have migrated
@@ -201,26 +229,26 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       const risk = await goplus.tokenRisk(t.chain as ChainId, t.address).catch(() => null);
       await this.prisma.db.token.update({
         where: { chain_address: { chain: t.chain, address: t.address } },
-        data: { risk: (risk ?? undefined) as object | undefined, riskCheckedAt: new Date() },
+        data: { risk: (risk ?? undefined) as object | undefined, holders: risk?.holders ?? undefined, riskCheckedAt: new Date() },
       });
     }
   }
 
-  async list(chains: ChainId[], stage: TrenchStage, limit: number, viewerId: string | null): Promise<TrenchToken[]> {
+  /** One Trenches column, with the column's Filters applied. */
+  async list(stage: TrenchStage, filter: CoinFilter, limit: number, viewerId: string | null): Promise<{ items: TrenchToken[]; total: number }> {
     const orderBy =
       stage === 'almost'
         ? [{ bondingPct: 'desc' as const }, { marketCapUsd: 'desc' as const }]
         : stage === 'survived'
           ? [{ migratedAt: 'desc' as const }, { createdAt: 'desc' as const }]
           : [{ createdAt: 'desc' as const }];
-    const tokens = await this.prisma.db.token.findMany({
-      where: { chain: { in: chains }, stage },
-      orderBy,
-      take: Math.min(limit, 100),
-    });
-    const counts = await this.chat.coinRoomCounts(tokens.map((t) => roomIds.coin(t.chain, t.address)));
-    const friends = viewerId ? await this.friendsBought(viewerId, tokens) : [];
-    return Promise.all(tokens.map((t) => this.toTrench(t, counts, friends)));
+    const pool = await this.prisma.db.token.findMany({ where: { chain: { in: filter.chains }, stage }, orderBy, take: 500 });
+    const counts = await this.chat.coinRoomCounts(pool.map((t) => roomIds.coin(t.chain, t.address)));
+    const friends = viewerId ? await this.friendsBought(viewerId, pool) : [];
+    const friendSet = new Set(friends.map((f) => f.tokenAddress));
+    const matched = pool.filter((t) => matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), filter));
+    const items = await Promise.all(matched.slice(0, Math.min(limit, 100)).map((t) => this.toTrench(t, counts, friends)));
+    return { items, total: matched.length };
   }
 
   /** "kairo +2 aped" — people you follow who bought this token. */

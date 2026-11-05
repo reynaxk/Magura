@@ -32,6 +32,7 @@ export const goplus = {
         freezable: r.freezable ? r.freezable.status === '1' : null,
         buyTax: null,
         sellTax: null,
+        holders: num(r.holder_count),
       };
     }
     const id = CHAINS[chain].goplus;
@@ -51,6 +52,7 @@ export const goplus = {
       freezable: null,
       buyTax: pct(r.buy_tax),
       sellTax: pct(r.sell_tax),
+      holders: num(r.holder_count),
     };
   },
 };

@@ -4,16 +4,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CHAIN_IDS, CHAINS, fmtAge, fmtPrice, fmtUsd, type ChainId, type ChatMessageDTO, type HuntToken, type PairSummary } from '@magura/shared';
+import { fmtAge, fmtPrice, fmtUsd, type ChainId, type ChatMessageDTO, type HuntToken, type PairSummary } from '@magura/shared';
 import { api } from '@/lib/api';
+import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
 import { useSession } from '@/lib/session';
 import type { LeaderRow } from '@/components/terminal';
 import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg } from '@/components/ui';
 
 type Sort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
-const MC = { any: [undefined, undefined], micro: [undefined, 100_000], small: [100_000, 1_000_000], mid: [1_000_000, 10_000_000], large: [10_000_000, undefined] } as const;
-const AGE = { any: undefined, '1h': 1, '24h': 24, '7d': 168 } as const;
-const LIQ = { any: undefined, '10k': 10_000, '50k': 50_000, '250k': 250_000 } as const;
 
 const CHAIN_SHORT: Record<ChainId, string> = { solana: 'SOL', base: 'BASE', bsc: 'BNB', ethereum: 'ETH' };
 
@@ -21,11 +19,8 @@ export default function HuntPage() {
   const { me } = useSession();
   const router = useRouter();
   const [sort, setSort] = useState<Sort>('hot');
-  const [chains, setChains] = useState<ChainId[]>([...CHAIN_IDS]);
-  const [mc, setMc] = useState<keyof typeof MC>('any');
-  const [age, setAge] = useState<keyof typeof AGE>('any');
-  const [liq, setLiq] = useState<keyof typeof LIQ>('any');
-  const [safe, setSafe] = useState(false);
+  const [filter, setFilter] = useStoredFilter('hunt');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
@@ -33,13 +28,7 @@ export default function HuntPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  const params = new URLSearchParams({ sort, chains: chains.join(','), limit: '60' });
-  const [minMc, maxMc] = MC[mc];
-  if (minMc) params.set('minMc', String(minMc));
-  if (maxMc) params.set('maxMc', String(maxMc));
-  if (AGE[age]) params.set('maxAgeH', String(AGE[age]));
-  if (LIQ[liq]) params.set('minLiq', String(LIQ[liq]));
-  if (safe) params.set('safeOnly', '1');
+  const params = new URLSearchParams({ sort, limit: '60', f: JSON.stringify(filter) });
 
   const list = useQuery({ queryKey: ['hunt', params.toString()], queryFn: () => api<HuntToken[]>(`/market/hunt?${params}`), refetchInterval: 20_000, enabled: !debounced });
   const search = useQuery({ queryKey: ['search', debounced], queryFn: () => api<PairSummary[]>(`/market/search?q=${encodeURIComponent(debounced)}`), enabled: debounced.length >= 2 });
@@ -62,8 +51,8 @@ export default function HuntPage() {
         </div>
 
         {!debounced && (
-          <div className="panel flex flex-col gap-3 p-3.5">
-            <div className="scroll-thin flex items-center gap-2 overflow-x-auto">
+          <div className="flex items-center gap-2">
+            <div className="scroll-thin min-w-0 flex-1 overflow-x-auto">
               <Segmented
                 label="Sort"
                 value={sort}
@@ -76,29 +65,11 @@ export default function HuntPage() {
                   { value: 'new', label: 'New' },
                 ]}
               />
-              <span className="mx-1 hidden h-6 w-px bg-line-2 md:block" />
-              {CHAIN_IDS.map((c) => {
-                const on = chains.includes(c);
-                return (
-                  <button key={c} aria-pressed={on} className={`${on ? 'chip-on' : 'chip'} shrink-0`} onClick={() => setChains((xs) => (on ? (xs.length > 1 ? xs.filter((x) => x !== c) : xs) : [...xs, c]))}>
-                    {CHAINS[c].name}
-                  </button>
-                );
-              })}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Filter label="Market cap" value={mc} onChange={setMc} options={[['any', 'Any'], ['micro', '< $100K'], ['small', '$100K–1M'], ['mid', '$1M–10M'], ['large', '$10M+']]} />
-              <Filter label="Age" value={age} onChange={setAge} options={[['any', 'Any'], ['1h', '< 1h'], ['24h', '< 24h'], ['7d', '< 7d']]} />
-              <Filter label="Liquidity" value={liq} onChange={setLiq} options={[['any', 'Any'], ['10k', '$10K+'], ['50k', '$50K+'], ['250k', '$250K+']]} />
-              <button aria-pressed={safe} onClick={() => setSafe(!safe)} className={`flex h-8 items-center gap-1.5 rounded-full border px-3 font-semibold ${safe ? 'border-lime-line bg-lime-dim text-lime' : 'border-line-2 text-text-2'}`}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
-                </svg>
-                Safe only
-              </button>
-            </div>
+            <FilterButton filter={filter} onClick={() => setFiltersOpen(true)} />
           </div>
         )}
+        <FilterPanel open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Hunt" scope="hunt" value={filter} onApply={setFilter} countPath={`/market/hunt?sort=${sort}`} />
 
         {debounced ? (
           <section className="panel p-2">
@@ -236,21 +207,6 @@ export default function HuntPage() {
 
       <HuntRail loggedIn={!!me} />
     </div>
-  );
-}
-
-function Filter<K extends string>({ label, value, onChange, options }: { label: string; value: K; onChange: (v: K) => void; options: [K, string][] }) {
-  return (
-    <label className="flex h-8 items-center gap-1.5 rounded-full border border-line-2 pl-3 pr-1 text-muted">
-      {label}
-      <select value={value} onChange={(e) => onChange(e.target.value as K)} className="h-7 rounded-full bg-raised px-2 font-semibold text-text outline-none">
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

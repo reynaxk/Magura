@@ -1,30 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, Token } from '@magura/db';
-import { roomIds, type ChainId, type ChatMessageDTO, type HuntToken, type TokenRisk, type TrenchStage } from '@magura/shared';
+import type { Token } from '@magura/db';
+import { matchesFilter, roomIds, type ChainId, type ChatMessageDTO, type CoinFilter, type HuntToken, type TokenRisk, type TrenchStage } from '@magura/shared';
+import { factsFor } from './filter-facts';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
 
 export type HuntSort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
 
-export interface HuntFilters {
-  chains: ChainId[];
+export interface HuntQuery {
   sort: HuntSort;
-  minMc?: number;
-  maxMc?: number;
-  maxAgeH?: number;
-  minLiq?: number;
-  safeOnly?: boolean;
+  filter: CoinFilter;
   limit: number;
-}
-
-/** A token is "safe enough" when holders aren't concentrated and it isn't a known trap. */
-function passesSafety(risk: TokenRisk | null): boolean {
-  if (!risk) return false;
-  if (risk.honeypot || risk.mintable || risk.freezable) return false;
-  if (risk.top10Pct != null && risk.top10Pct > 35) return false;
-  if (risk.devPct != null && risk.devPct > 5) return false;
-  if (risk.sellTax != null && risk.sellTax > 5) return false;
-  return true;
 }
 
 /**
@@ -40,22 +26,21 @@ export class HuntService {
     private readonly chat: ChatService,
   ) {}
 
-  async list(f: HuntFilters, viewerId: string | null): Promise<HuntToken[]> {
-    const where: Prisma.TokenWhereInput = {
-      chain: { in: f.chains },
-      ...(f.minMc != null || f.maxMc != null ? { marketCapUsd: { gte: f.minMc ?? undefined, lte: f.maxMc ?? undefined } } : {}),
-      ...(f.minLiq != null ? { liquidityUsd: { gte: f.minLiq } } : {}),
-      ...(f.maxAgeH != null ? { createdAt: { gte: new Date(Date.now() - f.maxAgeH * 3600_000) } } : {}),
-    };
-    // pull a wider pool, then rank in memory (needs chat activity from Redis)
+  async list(q: HuntQuery, viewerId: string | null): Promise<{ items: HuntToken[]; total: number }> {
+    const f = q.filter;
     const pool = await this.prisma.db.token.findMany({
-      where,
-      orderBy: f.sort === 'new' ? { createdAt: 'desc' } : { volumeUsd: { sort: 'desc', nulls: 'last' } },
-      take: 400,
+      where: { chain: { in: f.chains } },
+      orderBy: q.sort === 'new' ? { createdAt: 'desc' } : { volumeUsd: { sort: 'desc', nulls: 'last' } },
+      take: 600,
     });
-    const tokens = f.safeOnly ? pool.filter((t) => passesSafety(t.risk as TokenRisk | null)) : pool;
-    const roomKeys = tokens.map((t) => roomIds.coin(t.chain, t.address));
-    const [counts, recent] = await Promise.all([this.chat.coinRoomCounts(roomKeys), this.recentChat(roomKeys)]);
+    const roomKeys = pool.map((t) => roomIds.coin(t.chain, t.address));
+    const [counts, recent, friends] = await Promise.all([
+      this.chat.coinRoomCounts(roomKeys),
+      this.recentChat(roomKeys),
+      viewerId ? this.friendsBought(viewerId, pool) : Promise.resolve([]),
+    ]);
+    const friendSet = new Set(friends.map((x) => x.tokenAddress));
+    const tokens = pool.filter((t) => matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), f));
 
     const scored = tokens.map((t) => {
       const key = roomIds.coin(t.chain, t.address);
@@ -73,9 +58,8 @@ export class HuntService {
       volume: (a, b) => (b.t.volumeUsd ?? 0) - (a.t.volumeUsd ?? 0),
       new: (a, b) => +b.t.createdAt - +a.t.createdAt,
     };
-    const ranked = scored.sort(by[f.sort]).slice(0, f.limit);
-    const friends = viewerId ? await this.friendsBought(viewerId, ranked.map((r) => r.t)) : [];
-    return ranked.map(({ t, chatCount, hotScore }) => this.toRow(t, chatCount, hotScore, friends));
+    const ranked = scored.sort(by[q.sort]).slice(0, q.limit);
+    return { items: ranked.map(({ t, chatCount, hotScore }) => this.toRow(t, chatCount, hotScore, friends)), total: scored.length };
   }
 
   /** Tokens people you follow (or copy) bought in the last 24h. */

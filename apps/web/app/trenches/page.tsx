@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { CHAIN_IDS, CHAINS, fmtAge, fmtUsd, roomIds, type ChainId, type SwapTx, type TrenchStage, type TrenchToken } from '@magura/shared';
+import { CHAINS, activeFilterCount, fmtAge, fmtUsd, roomIds, type CoinFilter, type SwapTx, type TrenchStage, type TrenchToken } from '@magura/shared';
+import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useSocket, useSocketEvent } from '@/lib/socket';
@@ -22,7 +23,11 @@ export default function TrenchesPage() {
   const socket = useSocket();
   const qc = useQueryClient();
   const { me, login, addressFor, sendSwap } = useSession();
-  const [chains, setChains] = useState<ChainId[]>(['solana', 'base', 'bsc', 'ethereum']);
+  const [fNew, setFNew] = useStoredFilter('trenches-new');
+  const [fAlmost, setFAlmost] = useStoredFilter('trenches-almost');
+  const [fSurvived, setFSurvived] = useStoredFilter('trenches-survived');
+  const filters: Record<TrenchStage, [CoinFilter, (f: CoinFilter) => void]> = { new: [fNew, setFNew], almost: [fAlmost, setFAlmost], survived: [fSurvived, setFSurvived] };
+  const [filterFor, setFilterFor] = useState<TrenchStage | null>(null);
   const [paused, setPaused] = useState(false);
   const [selected, setSelected] = useState<TrenchToken | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
@@ -34,19 +39,20 @@ export default function TrenchesPage() {
     else setSelected(t);
   };
   const [, tick] = useState(0);
-  const chainKey = chains.join(',');
+  const keyOf = (stage: TrenchStage) => JSON.stringify(filters[stage][0]);
+  const allChains = [...new Set([...fNew.chains, ...fAlmost.chains, ...fSurvived.chains])];
 
   const results = useQueries({
     queries: STAGES.map((s) => ({
-      queryKey: ['trenches', s.id, chainKey],
-      queryFn: () => api<TrenchToken[]>(`/market/trenches?stage=${s.id}&chains=${chainKey}&limit=40`),
+      queryKey: ['trenches', s.id, keyOf(s.id)],
+      queryFn: () => api<TrenchToken[]>(`/market/trenches?stage=${s.id}&limit=40&f=${encodeURIComponent(keyOf(s.id))}`),
       refetchInterval: paused ? false : 20_000,
     })),
   });
 
   useEffect(() => {
-    socket?.emit('trenches:subscribe', chains);
-  }, [socket, chainKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    socket?.emit('trenches:subscribe', allChains);
+  }, [socket, allChains.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ages tick every second
   useEffect(() => {
@@ -54,20 +60,26 @@ export default function TrenchesPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Live updates. Columns with only a chain filter update instantly; columns with
+  // more rules refetch so the server applies them.
+  const simple = (stage: TrenchStage) => activeFilterCount({ ...filters[stage][0], chains: ['solana', 'base', 'bsc', 'ethereum'] }) === 0;
   useSocketEvent('trenches:token', (t) => {
-    if (paused || !chains.includes(t.chain)) return;
-    qc.setQueryData<TrenchToken[]>(['trenches', t.stage, chainKey], (xs = []) => [t, ...xs.filter((x) => x.address !== t.address)].slice(0, 60));
+    if (paused || !filters[t.stage][0].chains.includes(t.chain)) return;
+    if (!simple(t.stage)) return void qc.invalidateQueries({ queryKey: ['trenches', t.stage] });
+    qc.setQueryData<TrenchToken[]>(['trenches', t.stage, keyOf(t.stage)], (xs = []) => [t, ...xs.filter((x) => x.address !== t.address)].slice(0, 60));
   });
   useSocketEvent('trenches:update', (u) => {
     if (paused) return;
     for (const s of STAGES) {
-      qc.setQueryData<TrenchToken[]>(['trenches', s.id, chainKey], (xs) => {
+      qc.setQueryData<TrenchToken[]>(['trenches', s.id, keyOf(s.id)], (xs) => {
         if (!xs) return xs;
         const found = xs.find((x) => x.address === u.address);
         if (!found) return xs;
         const merged = { ...found, ...u } as TrenchToken;
         if (u.stage && u.stage !== s.id) {
-          qc.setQueryData<TrenchToken[]>(['trenches', u.stage, chainKey], (ys = []) => [merged, ...ys.filter((y) => y.address !== u.address)]);
+          const to = u.stage as TrenchStage;
+          if (simple(to)) qc.setQueryData<TrenchToken[]>(['trenches', to, keyOf(to)], (ys = []) => [merged, ...ys.filter((y) => y.address !== u.address)]);
+          else qc.invalidateQueries({ queryKey: ['trenches', to] });
           return xs.filter((x) => x.address !== u.address);
         }
         return xs.map((x) => (x.address === u.address ? merged : x));
@@ -108,21 +120,6 @@ export default function TrenchesPage() {
           <span className={`h-1.5 w-1.5 rounded-full ${paused ? 'bg-amber' : 'bg-lime'}`} />
           {paused ? 'Paused' : 'Live'}
         </button>
-        <div role="group" aria-label="Chains" className="scroll-thin -mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto px-4 md:mx-0 md:ml-2 md:w-auto md:flex-wrap md:px-0">
-          {CHAIN_IDS.map((c) => {
-            const on = chains.includes(c);
-            return (
-              <button
-                key={c}
-                onClick={() => setChains((xs) => (on ? (xs.length > 1 ? xs.filter((x) => x !== c) : xs) : [...xs, c]))}
-                aria-pressed={on}
-                className={on ? 'chip-on' : 'chip'}
-              >
-                {CHAINS[c].name}
-              </button>
-            );
-          })}
-        </div>
         <span className="ml-auto hidden items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted lg:flex">
           <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy uses your amounts from{' '}
           <Link href="/settings" className="text-lime">
@@ -131,7 +128,8 @@ export default function TrenchesPage() {
         </span>
       </div>
 
-      <div role="tablist" aria-label="Stage" className="grid grid-cols-3 gap-1 border-b border-line bg-bar p-2 lg:hidden">
+      <div className="flex items-center gap-2 border-b border-line bg-bar p-2 lg:hidden">
+      <div role="tablist" aria-label="Stage" className="grid flex-1 grid-cols-3 gap-1">
         {STAGES.map((s, i) => (
           <button
             key={s.id}
@@ -146,6 +144,19 @@ export default function TrenchesPage() {
           </button>
         ))}
       </div>
+      <FilterButton compact filter={filters[mobileStage][0]} onClick={() => setFilterFor(mobileStage)} />
+      </div>
+      {filterFor && (
+        <FilterPanel
+          open
+          onClose={() => setFilterFor(null)}
+          title={STAGES.find((x) => x.id === filterFor)!.title}
+          scope={`trenches-${filterFor}`}
+          value={filters[filterFor][0]}
+          onApply={filters[filterFor][1]}
+          countPath={`/market/trenches?stage=${filterFor}`}
+        />
+      )}
 
       <div className="flex min-h-0 flex-1 flex-wrap">
         <div className="grid min-w-0 flex-[999_1_820px] grid-cols-[repeat(auto-fit,minmax(300px,1fr))]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
@@ -156,6 +167,7 @@ export default function TrenchesPage() {
                 <h2 className="text-[15px] font-semibold">{s.title}</h2>
                 <span className="num rounded-md border border-line-2 px-1.5 text-[11px] text-muted">{results[i].data?.length ?? 0}</span>
                 <span className="ml-auto text-[11px] text-muted">{s.hint}</span>
+                <FilterButton compact filter={filters[s.id][0]} onClick={() => setFilterFor(s.id)} />
               </div>
               <div className="scroll-thin flex flex-col gap-2 p-2.5 lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto">
                 {results[i].isLoading && Array.from({ length: 5 }).map((_, k) => <div key={k} className="h-[118px] animate-pulse rounded-2xl bg-panel" />)}

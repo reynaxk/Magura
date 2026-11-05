@@ -36,11 +36,13 @@ export class ChatService {
     if (kind === 'coin') {
       const [chain, address] = rest;
       if (!chain || !address || !isChainId(chain)) throw new NotFoundException('room_not_found');
-      await this.prisma.db.room.upsert({
-        where: { id: roomId },
-        update: {},
-        create: { id: roomId, kind: 'coin', chain, tokenAddress: address, title: `${CHAINS[chain].name} coin room` },
-      });
+      const exists = await this.prisma.db.room.findUnique({ where: { id: roomId }, select: { id: true } });
+      if (!exists)
+        await this.prisma.db.room
+          .create({ data: { id: roomId, kind: 'coin', chain, tokenAddress: address, title: `${CHAINS[chain].name} coin room` } })
+          .catch((e: { code?: string }) => {
+            if (e.code !== 'P2002') throw e; // two people opened a brand-new coin at once — the room exists now
+          });
       return;
     }
     const room = await this.prisma.db.room.findUnique({

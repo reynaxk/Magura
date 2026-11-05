@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { Cron } from '@nestjs/schedule';
 import { dexscreener, fetchNews, geckoterminal, goplus, jupiter, polymarket } from '@magura/chains';
@@ -118,8 +118,10 @@ export class MarketController {
   ohlcv(@Param('chain') chainRaw: string, @Param('pool') pool: string, @Query('tf') tfRaw = '15m') {
     const chain = parse(zChain, chainRaw);
     const tf = parse(z.enum(['1m', '5m', '15m', '1h', '4h', '1d']), tfRaw) as Timeframe;
-    const ttl = tf === '1m' ? 10 : tf === '5m' ? 30 : 60;
-    return this.redis.cached(`ohlcv:${chain}:${pool}:${tf}`, ttl, () => geckoterminal.ohlcv(chain, pool, tf));
+    const ttl = tf === '1m' ? 15 : tf === '5m' ? 45 : tf === '15m' ? 90 : 180;
+    return this.redis.cachedStale(`ohlcv:${chain}:${pool}:${tf}`, ttl, 6 * 3600, () => geckoterminal.ohlcv(chain, pool, tf)).catch(() => {
+      throw new ServiceUnavailableException({ error: 'chart_busy', message: 'Chart data is busy, retrying' });
+    });
   }
 
   @Public()

@@ -100,7 +100,7 @@ export class CoinActivityService {
     const { pool, supply } = await this.market(chain, address);
     const [raw, holders] = await Promise.all([
       pool
-        ? this.redis.cached(`trades:${chain}:${pool}:${minUsd}`, 8, () => geckoterminal.trades(chain, pool, minUsd)).catch(() => [] as PoolTrade[])
+        ? this.redis.cachedStale(`trades:${chain}:${pool}:${minUsd}`, 15, 3600, () => geckoterminal.trades(chain, pool, minUsd)).catch(() => [] as PoolTrade[])
         : Promise.resolve([] as PoolTrade[]),
       this.creator(chain, address),
     ]);
@@ -145,7 +145,7 @@ export class CoinActivityService {
       // Earliest buyers we can see: for young coins the last ~300 swaps reach back to launch.
       pool
         ? this.redis
-            .cached(`trades:${chain}:${pool}:0`, 8, () => geckoterminal.trades(chain, pool))
+            .cachedStale(`trades:${chain}:${pool}:0`, 15, 3600, () => geckoterminal.trades(chain, pool))
             .then((t) => new Set(t.filter((x) => x.side === 'buy').slice(-20).map((x) => x.wallet)))
             .catch(() => new Set<string>())
         : Promise.resolve(new Set<string>()),

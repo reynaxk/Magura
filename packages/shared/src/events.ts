@@ -40,7 +40,8 @@ export interface ClientToServerEvents {
 /** Deterministic room ids. */
 export const roomIds = {
   world: () => 'world',
-  coin: (chain: string, address: string) => `coin:${chain}:${address.toLowerCase()}`,
+  /** Solana mints are case-sensitive; EVM addresses are normalised to lowercase. */
+  coin: (chain: string, address: string) => `coin:${chain}:${chain === 'solana' ? address : address.toLowerCase()}`,
   channel: (channelId: string) => `channel:${channelId}`,
   dm: (a: string, b: string) => `dm:${[a, b].sort().join(':')}`,
   stream: (streamId: string) => `stream:${streamId}`,

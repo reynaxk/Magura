@@ -100,6 +100,8 @@ model UserSettings {
   activePreset    Int  @default(0)
   /// Telegram chat linked for alerts
   telegramChatId  String?
+  /// Personal code shown in every Telegram alert, so users can spot fake messages
+  antiPhishingCode String?
   // copy defaults
   copyBudgetUsd       Decimal @default(0) @db.Decimal(18, 2)
   copyMaxPerBuyUsd    Decimal @default(250) @db.Decimal(18, 2)

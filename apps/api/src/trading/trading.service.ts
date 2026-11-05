@@ -14,7 +14,6 @@ import {
   type ChainId,
   type SwapQuote,
   type TradeAttachment,
-  withReferralDiscount,
 } from '@magura/shared';
 import { env } from '../config';
 import { ChatService } from '../chat/chat.service';
@@ -62,10 +61,16 @@ export class TradingService {
     private readonly chat: ChatService,
   ) {}
 
-  private discountLookup: (userId: string) => Promise<boolean> = async () => false;
-  /** Referrals plug in here: invited users get a fee discount. */
-  setDiscountLookup(fn: (userId: string) => Promise<boolean>) {
-    this.discountLookup = fn;
+  /** Fee discounts (fraction off, e.g. 0.1) contributed by referrals, weekly prizes, … — they stack multiplicatively. */
+  private discounts: ((userId: string) => Promise<number>)[] = [];
+  addDiscount(fn: (userId: string) => Promise<number>) {
+    this.discounts.push(fn);
+  }
+
+  async feeMultiplier(userId: string): Promise<number> {
+    let m = 1;
+    for (const d of this.discounts) m *= 1 - Math.min(0.5, Math.max(0, await d(userId).catch(() => 0)));
+    return m;
   }
 
   onConfirmed(fn: ConfirmedListener) {
@@ -101,11 +106,11 @@ export class TradingService {
     if (!nUsd) throw new BadRequestException('price_unavailable');
     const receiver = (svm ? env.FEE_WALLET_SOLANA : env.FEE_WALLET_EVM) ?? null;
     const toUsd = (base: string | bigint) => (Number(base) / 10 ** dec) * nUsd;
-    const discounted = q.userId ? await this.discountLookup(q.userId).catch(() => false) : false;
+    const mult = q.userId ? await this.feeMultiplier(q.userId) : 1;
     const bpsFor = (usd: number) => {
       try {
         const bps = feeBpsFor(q.chain, usd);
-        return discounted ? withReferralDiscount(bps) : bps;
+        return Math.round(bps * mult);
       } catch (e) {
         if (e instanceof TradeTooSmallError) throw new BadRequestException(`min_trade_${MIN_TRADE_USD}_usd`);
         throw e;

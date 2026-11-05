@@ -70,6 +70,7 @@ export class UsersController {
             )
             .length(3),
           activePreset: z.number().int().min(0).max(2),
+          antiPhishingCode: z.string().trim().regex(/^[A-Za-z0-9 _-]{3,20}$/).nullable(),
           copyBudgetUsd: z.number().min(0),
           copyMaxPerBuyUsd: z.number().min(1),
           copyStopLossPct: z.number().int().min(1).max(100),

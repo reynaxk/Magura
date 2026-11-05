@@ -57,6 +57,7 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
             Create account
           </button>
         )}
+        <p className="text-[11px] text-faint">Magura never asks for your seed phrase or for signatures to &ldquo;accept terms&rdquo;. Only trust this site&apos;s address.</p>
       </div>
     </div>
   );

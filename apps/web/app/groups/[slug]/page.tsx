@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { GroupBoards } from '@/components/competition';
+import { ChampionBadge, GroupBoards } from '@/components/competition';
 import { useRouter } from 'next/navigation';
 import { use, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,6 +43,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const group = useQuery({ queryKey: ['group', slug], queryFn: () => api<Group>(`/groups/${slug}`) });
   const members = useQuery({ queryKey: ['group', slug, 'members'], queryFn: () => api<Member[]>(`/groups/${slug}/members`) });
   const [channelId, setChannelId] = useState<string | null>(null);
+  const [boards, setBoards] = useState(false);
   const g = group.data;
   const text = g?.channels.filter((c) => c.kind !== 'voice') ?? [];
   const voice = g?.channels.filter((c) => c.kind === 'voice') ?? [];
@@ -75,7 +76,10 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               {g.name.slice(0, 2).toUpperCase()}
             </span>
             <div className="flex min-w-0 flex-col">
-              <span className="truncate font-semibold">{g.name}</span>
+              <span className="flex items-center gap-1.5">
+                <span className="truncate font-semibold">{g.name}</span>
+                <ChampionBadge slug={slug} />
+              </span>
               <span className="text-xs text-muted">{g._count.members} members</span>
             </div>
           </div>
@@ -109,15 +113,26 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
+        {boards && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 lg:hidden" onClick={() => setBoards(false)}>
+            <section aria-label="Leaderboard" onClick={(e) => e.stopPropagation()} className="max-h-[75dvh] overflow-y-auto rounded-t-[22px] border-t border-line-3 bg-raised px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-2.5">
+              <button aria-label="Close" onClick={() => setBoards(false)} className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line-3" />
+              <GroupBoards slug={slug} />
+            </section>
+          </div>
+        )}
         <div className="flex flex-col gap-2 border-b border-line px-4 py-3 md:hidden">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-[10px] text-xs font-semibold text-bar" style={{ background: g.color }}>
               {g.name.slice(0, 2).toUpperCase()}
             </span>
             <span className="font-semibold">{g.name}</span>
-            <span className="text-xs text-muted">{g._count.members} members</span>
+            <ChampionBadge slug={slug} />
+            <button onClick={() => setBoards(true)} className="chip ml-auto h-8 shrink-0 text-xs">
+              Leaderboard
+            </button>
             {!isMember && (
-              <button className="btn-lime ml-auto h-8 text-xs" onClick={() => (me ? join.mutate() : login())}>
+              <button className="btn-lime h-8 text-xs" onClick={() => (me ? join.mutate() : login())}>
                 Join
               </button>
             )}
@@ -129,7 +144,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               </button>
             ))}
             {voice.map((c) => (
-              <button key={c.id} onClick={() => (me ? startVoice.mutate(c.id) : login())} className="chip shrink-0 gap-1.5 border-violet-line text-violet-2">
+              <button key={c.id} onClick={() => (me ? startVoice.mutate(c.id) : login())} className="chip shrink-0 gap-1.5">
                 <Svg d={Icon.mic} size={13} color="currentColor" />
                 {c.name}
               </button>

@@ -1,10 +1,11 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { Controller, Get, Injectable, NotFoundException, OnModuleInit, Param, Query } from '@nestjs/common';
 import { z } from 'zod';
 import type { CallAttachment } from '@magura/shared';
 import { Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse } from '../common/zod';
 import { computePnl } from '../trading/pnl';
+import { TradingService } from '../trading/trading.service';
 import { weekStart } from './week';
 
 const WEEK = 7 * 86_400_000;
@@ -13,21 +14,28 @@ const MIN_MEMBER_COST_USD = 10;
 
 type Row = { userId: string; handle: string; avatarUrl: string | null; realizedUsd: number; costUsd: number; roiPct: number | null; trades: number };
 
-/** Weekly group-vs-group competition, in-group leaderboards and caller scoreboards. */
-@Controller()
-export class CompetitionsController {
+/** Fee discount for members of last week's winning group, for the whole current week. */
+export const CHAMPION_DISCOUNT = 0.1;
+
+@Injectable()
+export class CompetitionsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly trading: TradingService,
   ) {}
 
-  private window(which: 'current' | 'last') {
+  onModuleInit() {
+    this.trading.addDiscount(async (userId) => ((await this.champion())?.memberIds.includes(userId) ? CHAMPION_DISCOUNT : 0));
+  }
+
+  window(which: 'current' | 'last') {
     const start = weekStart();
     return which === 'current' ? { from: start, to: new Date(start.getTime() + WEEK) } : { from: new Date(start.getTime() - WEEK), to: start };
   }
 
   /** Realized PnL per user from their trades in a window (positions opened earlier count from their cost basis). */
-  private async memberRows(userIds: string[], from: Date, to: Date): Promise<Row[]> {
+  async memberRows(userIds: string[], from: Date, to: Date): Promise<Row[]> {
     if (!userIds.length) return [];
     const [users, trades] = await Promise.all([
       this.prisma.db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, handle: true, avatarUrl: true, settings: { select: { publicPnl: true } } } }),
@@ -55,12 +63,9 @@ export class CompetitionsController {
       });
   }
 
-  @Public()
-  @Get('competitions/groups')
-  async groups(@Query() q: Record<string, string>) {
-    const p = parse(z.object({ week: z.enum(['current', 'last']).default('current') }), q);
-    return this.redis.cached(`comp:groups:${p.week}:${weekStart().toISOString()}`, 300, async () => {
-      const { from, to } = this.window(p.week);
+  async ranking(week: 'current' | 'last') {
+    return this.redis.cached(`comp:groups:${week}:${weekStart().toISOString()}`, week === 'last' ? 3600 : 300, async () => {
+      const { from, to } = this.window(week);
       const groups = await this.prisma.db.group.findMany({
         where: { isPublic: true },
         select: { id: true, slug: true, name: true, iconUrl: true, color: true, members: { select: { userId: true } } },
@@ -80,14 +85,42 @@ export class CompetitionsController {
     });
   }
 
+  /** Last week's winner and its members (cached for the week). Null when nobody qualified. */
+  async champion(): Promise<{ slug: string; name: string; roiPct: number; memberIds: string[] } | null> {
+    return this.redis.cached(`comp:champion:${weekStart().toISOString()}`, 3600, async () => {
+      const last = await this.ranking('last');
+      const top = last.groups.find((g) => g.roiPct != null && g.roiPct > 0);
+      if (!top) return null;
+      const g = await this.prisma.db.group.findUnique({ where: { slug: top.slug }, select: { members: { select: { userId: true } } } });
+      return { slug: top.slug, name: top.name, roiPct: top.roiPct!, memberIds: g?.members.map((m) => m.userId) ?? [] };
+    });
+  }
+}
+
+/** Weekly group-vs-group competition, in-group leaderboards and caller scoreboards. */
+@Controller()
+export class CompetitionsController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly comp: CompetitionsService,
+  ) {}
+
+  @Public()
+  @Get('competitions/groups')
+  async groups(@Query() q: Record<string, string>) {
+    const p = parse(z.object({ week: z.enum(['current', 'last']).default('current') }), q);
+    const [board, champ] = await Promise.all([this.comp.ranking(p.week), this.comp.champion()]);
+    return { ...board, champion: champ ? { slug: champ.slug, name: champ.name, roiPct: champ.roiPct, discountPct: CHAMPION_DISCOUNT * 100 } : null };
+  }
+
   @Public()
   @Get('groups/:slug/leaderboard')
   async groupBoard(@Param('slug') slug: string, @Query() q: Record<string, string>) {
     const p = parse(z.object({ week: z.enum(['current', 'last']).default('current') }), q);
     const g = await this.prisma.db.group.findUnique({ where: { slug }, select: { id: true, isPublic: true, members: { select: { userId: true } } } });
     if (!g) throw new NotFoundException();
-    const { from, to } = this.window(p.week);
-    const rows = await this.memberRows(g.members.map((m) => m.userId), from, to);
+    const { from, to } = this.comp.window(p.week);
+    const rows = await this.comp.memberRows(g.members.map((m) => m.userId), from, to);
     return {
       from,
       to,

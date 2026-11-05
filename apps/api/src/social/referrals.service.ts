@@ -19,7 +19,7 @@ export class ReferralsService implements OnModuleInit {
 
   onModuleInit() {
     this.trading.onConfirmed((t) => this.accrue(t));
-    this.trading.setDiscountLookup((userId) => this.isInvitee(userId));
+    this.trading.addDiscount(async (userId) => ((await this.isInvitee(userId)) ? REFERRAL.inviteeDiscount : 0));
   }
 
   /** Cached "was this user invited?" — used on every quote. */

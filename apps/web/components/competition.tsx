@@ -17,6 +17,28 @@ interface GroupRank {
   realizedUsd: number;
   roiPct: number | null;
 }
+interface Champion {
+  slug: string;
+  name: string;
+  roiPct: number;
+  discountPct: number;
+}
+
+/** Last week's winning group — its members pay less this week. */
+export function useChampion() {
+  return useQuery({ queryKey: ['comp-groups', 'current'], queryFn: () => api<{ champion: Champion | null }>(`/competitions/groups?week=current`), staleTime: 300_000, select: (d) => d.champion });
+}
+
+export function ChampionBadge({ slug }: { slug: string }) {
+  const c = useChampion();
+  if (c.data?.slug !== slug) return null;
+  return (
+    <span title={`Group of last week · members pay ${c.data.discountPct}% less this week`} className="rounded-md border border-lime-line bg-lime-dim px-1.5 py-0.5 text-[10px] font-semibold text-lime">
+      Champion
+    </span>
+  );
+}
+
 interface MemberRank {
   handle: string;
   avatarUrl: string | null;
@@ -61,7 +83,12 @@ function GroupIcon({ g, size = 36 }: { g: Pick<GroupRank, 'name' | 'iconUrl' | '
 /** Weekly group-vs-group leaderboard (Groups page). */
 export function GroupCompetition() {
   const [week, setWeek] = useState<'current' | 'last'>('current');
-  const q = useQuery({ queryKey: ['comp-groups', week], queryFn: () => api<{ from: string; to: string; groups: GroupRank[] }>(`/competitions/groups?week=${week}`), refetchInterval: 120_000 });
+  const q = useQuery({
+    queryKey: ['comp-groups', week],
+    queryFn: () => api<{ from: string; to: string; groups: GroupRank[]; champion: Champion | null }>(`/competitions/groups?week=${week}`),
+    refetchInterval: 120_000,
+  });
+  const champ = q.data?.champion;
   const ends = useCountdown(q.data?.to);
   const rows = q.data?.groups ?? [];
   return (
@@ -85,6 +112,14 @@ export function GroupCompetition() {
           />
         </span>
       </div>
+      {champ && (
+        <Link href={`/groups/${champ.slug}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-lime-dim px-5 py-3 text-[13px] hover:brightness-110">
+          <span className="font-semibold text-lime">Last week&apos;s champion: {champ.name}</span>
+          <span className="text-text-2">
+            <Delta value={champ.roiPct} /> · members pay {champ.discountPct}% less on fees all this week
+          </span>
+        </Link>
+      )}
       {rows.length ? (
         <ol className="flex flex-col">
           {rows.slice(0, 10).map((g, i) => (

@@ -14,7 +14,7 @@ const pushEnabled = !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 if (pushEnabled) webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!);
 
 /** Send one alert to a linked Telegram chat. */
-export async function sendTelegram(chatId: string, title: string, body: string, href: string | null) {
+export async function sendTelegram(chatId: string, title: string, body: string, href: string | null, code?: string | null) {
   if (!env.TELEGRAM_BOT_TOKEN) return;
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const url = href ? (href.startsWith('http') ? href : `${env.WEB_ORIGIN.split(',')[0]}${href}`) : null;
@@ -23,7 +23,7 @@ export async function sendTelegram(chatId: string, title: string, body: string, 
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      text: `<b>${esc(title)}</b>\n${esc(body)}`,
+      text: `<b>${esc(title)}</b>\n${esc(body)}${code ? `\n\n<i>Your Magura code: ${esc(code)}</i>` : ''}`,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
       ...(url ? { reply_markup: { inline_keyboard: [[{ text: 'Open in Magura', url }]] } } : {}),
@@ -40,9 +40,9 @@ export class NotificationsService {
 
   /** Respects each user's per-event push / in-app preferences from Settings. */
   async notify(userId: string, kind: NotifyKind, title: string, body: string, href: string | null = null) {
-    const s = await this.prisma.db.userSettings.findUnique({ where: { userId }, select: { notifications: true, telegramChatId: true } });
+    const s = await this.prisma.db.userSettings.findUnique({ where: { userId }, select: { notifications: true, telegramChatId: true, antiPhishingCode: true } });
     const pref = ((s?.notifications ?? {}) as Record<string, { push?: boolean; app?: boolean; tg?: boolean }>)[kind] ?? { push: true, app: true };
-    if (s?.telegramChatId && pref.tg !== false && kind !== 'dm') void sendTelegram(s.telegramChatId, title, body, href).catch(() => undefined);
+    if (s?.telegramChatId && pref.tg !== false && kind !== 'dm') void sendTelegram(s.telegramChatId, title, body, href, s.antiPhishingCode).catch(() => undefined);
     if (pref.app !== false) {
       const n = await this.prisma.db.notification.create({ data: { userId, kind, title, body, href } });
       this.rt.toUser(userId, 'notification', { id: n.id, kind, title, body, href });

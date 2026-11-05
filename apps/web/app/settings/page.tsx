@@ -30,6 +30,43 @@ const NOTIFS = [
   ['order', 'Orders', 'Take profit, stop loss and limit orders fire'],
 ] as const;
 
+function AntiPhishing({ current, onSave }: { current: string | null; onSave: (v: string | null) => void }) {
+  const [v, setV] = useState(current ?? '');
+  const valid = /^[A-Za-z0-9 _-]{3,20}$/.test(v.trim());
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-line-2 bg-raised p-4">
+      <span className="flex flex-col gap-0.5">
+        <span className="font-semibold">Anti-phishing code</span>
+        <span className="text-xs text-muted">Pick a word only you know. Every Magura alert in Telegram ends with it. If a message doesn&apos;t show your code, it isn&apos;t from us.</span>
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="input h-10 min-w-0 flex-1"
+          aria-label="Anti-phishing code"
+          placeholder="e.g. blue-falcon-7"
+          maxLength={20}
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+        />
+        <button className="btn-lime h-10 px-4 text-sm" disabled={!valid || v.trim() === current} onClick={() => onSave(v.trim())}>
+          Save
+        </button>
+        {current && (
+          <button
+            className="btn-ghost h-10 px-4 text-sm"
+            onClick={() => {
+              setV('');
+              onSave(null);
+            }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TelegramRow({ linked, onChange }: { linked: boolean; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
   const connect = async () => {
@@ -294,6 +331,17 @@ export default function SettingsPage() {
         {sec === 'security' && (
           <>
             <h2 className="text-lg font-semibold">Security</h2>
+            <div className="flex flex-col gap-2 rounded-2xl border border-lime-line bg-lime-dim p-4 text-[13px]">
+              <span className="font-semibold text-lime">Magura will never</span>
+              <ul className="flex list-disc flex-col gap-1 pl-5 text-text-2">
+                <li>ask you to sign anything except logging in and trades you start yourself</li>
+                <li>ask for your seed phrase or private key</li>
+                <li>DM you first about support, airdrops or refunds</li>
+                <li>send you to any site other than this one to claim rewards</li>
+              </ul>
+              <span className="text-xs text-muted">If something asks for any of these, it is a scam. Close it.</span>
+            </div>
+            <AntiPhishing current={(s.antiPhishingCode as string | null) ?? null} onSave={(v) => set('antiPhishingCode', v)} />
             <div className="flex items-center gap-3.5 rounded-2xl border border-line-2 bg-raised p-4">
               <span className="flex flex-col">
                 <span className="font-semibold">Login & two-factor</span>

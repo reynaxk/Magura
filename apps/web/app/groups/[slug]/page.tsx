@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { GroupBoards } from '@/components/competition';
 import { useRouter } from 'next/navigation';
 import { use, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -159,7 +160,10 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
         )}
       </main>
 
-      <aside aria-label="Members" className="hidden w-[240px] shrink-0 flex-col gap-1 overflow-y-auto border-l border-line bg-bar p-3 lg:flex">
+      <aside aria-label="Members" className="hidden w-[260px] shrink-0 flex-col gap-1 overflow-y-auto border-l border-line bg-bar p-3 lg:flex">
+        <div className="mb-2 border-b border-line pb-3">
+          <GroupBoards slug={slug} />
+        </div>
         {['owner', 'lead', 'member'].map((role) => {
           const list = members.data?.filter((m) => m.role === role) ?? [];
           if (!list.length) return null;

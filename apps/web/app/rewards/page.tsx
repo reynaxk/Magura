@@ -2,14 +2,20 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { CHAINS, fmtAge, type ChainId } from '@magura/shared';
+import { CASHBACK_TIERS, CHAINS, fmtAge, type ChainId } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { Avatar, Empty, Icon } from '@/components/ui';
 import { toast } from '@/components/toaster';
 
+interface Tier {
+  name: string;
+  fromUsd: number;
+  pct: number;
+}
 interface Rewards {
   code: string;
+  cashback: { tier: Tier; next: Tier | null; volume30dUsd: number; earnedUsd: number };
   invitedBy: string | null;
   totals: { invites: number; trading: number; earnedUsd: number; last7dUsd: number; claimableUsd: number; minClaimUsd: number };
   invites: { handle: string; avatarUrl: string | null; joinedAt: string; trades: number; earnedUsd: number }[];
@@ -47,8 +53,47 @@ export default function RewardsPage() {
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 p-3 md:p-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-semibold tracking-tight md:text-[32px]">Rewards</h1>
-        <p className="text-sm text-muted">Friends who join with your link pay 10% less on every trade. You earn 25% of the fees they pay, for good.</p>
+        <p className="text-sm text-muted">Get part of every fee back as you trade more, and earn 25% of the fees paid by friends you invite.</p>
       </div>
+
+      {r.data && (
+        <section className="panel flex flex-col gap-4 p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="label">Cashback</span>
+              <span className="text-xl font-semibold">
+                {r.data.cashback.tier.name} · <span className="num text-lime">{r.data.cashback.tier.pct}% of fees back</span>
+              </span>
+              <span className="text-xs text-muted">
+                Based on your last 30 days of trading: <span className="num text-text-2">{usd(r.data.cashback.volume30dUsd)}</span>
+                {r.data.cashback.next && (
+                  <>
+                    {' '}
+                    · trade <span className="num text-text-2">{usd(Math.max(0, r.data.cashback.next.fromUsd - r.data.cashback.volume30dUsd))}</span> more to reach{' '}
+                    {r.data.cashback.next.name} ({r.data.cashback.next.pct}%)
+                  </>
+                )}
+              </span>
+            </div>
+            <span className="num ml-auto text-sm text-muted">
+              Earned <span className="text-lime">{usd(r.data.cashback.earnedUsd)}</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {CASHBACK_TIERS.map((t) => {
+              const on = t.fromUsd <= r.data!.cashback.volume30dUsd;
+              const current = t.name === r.data!.cashback.tier.name;
+              return (
+                <div key={t.name} className={`flex flex-col gap-1 rounded-xl border p-2.5 ${current ? 'border-lime-line bg-lime-dim' : 'border-line-2'} ${on ? '' : 'opacity-60'}`}>
+                  <span className="text-xs font-semibold">{t.name}</span>
+                  <span className="num text-[11px] text-muted">{t.fromUsd ? `$${t.fromUsd >= 1000 ? `${t.fromUsd / 1000}K` : t.fromUsd}+` : 'Start'}</span>
+                  <span className={`num text-sm ${t.pct ? 'text-lime' : 'text-muted'}`}>{t.pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="panel flex flex-col gap-3 p-5">
         <span className="label">Your invite link</span>

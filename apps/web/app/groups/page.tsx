@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { GroupCompetition } from '@/components/competition';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -76,6 +77,7 @@ export default function GroupsPage() {
         </form>
       )}
 
+      <GroupCompetition />
       {!!mine.data?.length && <GroupGrid title="Your groups" groups={mine.data} />}
       {(() => {
         const rest = (discover.data ?? []).filter((g) => !mine.data?.some((m) => m.id === g.id));

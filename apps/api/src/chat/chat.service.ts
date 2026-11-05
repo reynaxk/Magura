@@ -1,3 +1,4 @@
+import { dexscreener } from '@magura/chains';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Message, User } from '@magura/db';
 import { CHAINS, isChainId, type ChatMessageDTO } from '@magura/shared';
@@ -91,6 +92,15 @@ export class ChatService {
       if (s && !s.showInWorld) throw new ForbiddenException('world_chat_disabled_in_settings');
     }
 
+    if (attachment?.kind === 'call') {
+      const c = attachment;
+      const addr = c.chain === 'solana' ? c.token.address : c.token.address.toLowerCase();
+      const [pair, row] = await Promise.all([
+        dexscreener.bestPair(c.chain, addr).catch(() => null),
+        this.prisma.db.token.findUnique({ where: { chain_address: { chain: c.chain, address: addr } } }),
+      ]);
+      attachment = { ...c, priceAtCall: pair?.priceUsd ?? row?.priceUsd ?? null };
+    }
     const msg = await this.prisma.db.message.create({
       data: { roomId, authorId: user.id, text: clean, attachment: (attachment ?? undefined) as object | undefined },
       include: { author: { select: { id: true, handle: true, avatarUrl: true, badges: true } } },

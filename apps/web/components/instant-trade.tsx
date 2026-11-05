@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePresets, useInstantTrade, type TradeTarget } from '@/lib/trade';
 import { usePref } from '@/lib/prefs';
 import { Icon, Svg } from './ui';
+import { AddFunds } from './add-funds';
 
 const BUY_KEYS = ['1', '2', '3', '4'];
 const SELL_KEYS = ['q', 'w', 'e', 'r'];
@@ -82,7 +83,10 @@ function Buttons({ target, compact }: { target: TradeTarget; compact?: boolean }
   const h = compact ? 'h-9' : 'h-12 md:h-9';
   return (
     <>
-      <span className="text-[11px] text-muted">Buy ({native})</span>
+      <span className="flex items-center justify-between text-[11px] text-muted">
+        Buy ({native})
+        <AddFunds variant="link" defaultChain={target.chain === 'solana' ? 'solana' : target.chain === 'ethereum' ? 'ethereum' : 'base'} />
+      </span>
       <div className="num grid grid-cols-4 gap-1.5 text-[13px] font-semibold">
         {buyAmounts.map((a, i) => (
           <button

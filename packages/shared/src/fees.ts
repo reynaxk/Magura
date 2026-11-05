@@ -100,3 +100,22 @@ export const DEFAULT_PRESETS: TradePreset[] = [
 /** Referrals: invitees pay 10% less; inviters earn 25% of the (discounted) fee their invitees pay. */
 export const REFERRAL = { inviteeDiscount: 0.1, inviterShare: 0.25, minClaimUsd: 10, attachWindowDays: 7 } as const;
 export const withReferralDiscount = (bps: number) => Math.round(bps * (1 - REFERRAL.inviteeDiscount));
+
+/** Cashback: part of every fee comes back, by your 30-day trading volume. */
+export interface CashbackTier {
+  name: string;
+  fromUsd: number;
+  pct: number;
+}
+export const CASHBACK_TIERS: CashbackTier[] = [
+  { name: 'Scout', fromUsd: 0, pct: 0 },
+  { name: 'Hunter', fromUsd: 1_000, pct: 10 },
+  { name: 'Tracker', fromUsd: 10_000, pct: 25 },
+  { name: 'Predator', fromUsd: 50_000, pct: 40 },
+  { name: 'Apex', fromUsd: 250_000, pct: 50 },
+];
+export function cashbackTierFor(volume30dUsd: number): { tier: CashbackTier; next: CashbackTier | null } {
+  let i = 0;
+  for (let k = 0; k < CASHBACK_TIERS.length; k++) if (volume30dUsd >= CASHBACK_TIERS[k].fromUsd) i = k;
+  return { tier: CASHBACK_TIERS[i], next: CASHBACK_TIERS[i + 1] ?? null };
+}

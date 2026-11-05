@@ -14,6 +14,7 @@ import { Avatar, Icon, Svg } from './ui';
 
 const NAV = [
   { href: '/', label: 'Hunt' },
+  { href: '/feed', label: 'Feed' },
   { href: '/trenches', label: 'Trenches' },
   { href: '/copy', label: 'Copy' },
   { href: '/groups', label: 'Groups' },
@@ -152,10 +153,10 @@ const TABS = [
   { href: '/trenches', label: 'Trenches', d: 'M13 2L4 14h7l-1 8 9-12h-7z', match: (p: string) => p.startsWith('/trenches') },
   { href: '/copy', label: 'Copy', d: 'M8 8h11v11H8zM5 16V5h11', match: (p: string) => p.startsWith('/copy') || p.startsWith('/u/') },
   {
-    href: '/messages',
+    href: '/feed',
     label: 'Social',
     d: 'M4 5h16v11H9l-5 4z',
-    match: (p: string) => p.startsWith('/messages') || p.startsWith('/groups') || p.startsWith('/live') || p.startsWith('/call'),
+    match: (p: string) => p.startsWith('/feed') || p.startsWith('/messages') || p.startsWith('/groups') || p.startsWith('/live') || p.startsWith('/call'),
   },
   { href: '/portfolio', label: 'Wallet', d: 'M3 7h18v13H3zM16 13h2M3 7l3-4h12l3 4', match: (p: string) => p.startsWith('/portfolio') || p.startsWith('/settings') || p.startsWith('/rewards') },
 ];
@@ -183,6 +184,7 @@ function BottomNav({ path }: { path: string }) {
 export function SocialTabs() {
   const path = usePathname() ?? '';
   const items = [
+    ['/feed', 'Feed'],
     ['/messages', 'Messages'],
     ['/groups', 'Groups'],
     ['/live', 'Live'],

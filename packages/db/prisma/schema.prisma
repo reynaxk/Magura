@@ -98,6 +98,8 @@ model UserSettings {
   /// Instant-trade presets P1–P3: [{ name, slippageBps, buy: { <chain>: string[4] }, sell: number[4] }]
   tradePresets    Json?
   activePreset    Int  @default(0)
+  /// Telegram chat linked for alerts
+  telegramChatId  String?
   // copy defaults
   copyBudgetUsd       Decimal @default(0) @db.Decimal(18, 2)
   copyMaxPerBuyUsd    Decimal @default(250) @db.Decimal(18, 2)
@@ -221,18 +223,20 @@ model Referral {
   @@index([inviterId])
 }
 
-/// One reward line per fee-paying trade by an invitee.
+/// One reward line per fee-paying trade: a referral share for the inviter, or cashback for the trader.
 model RewardEntry {
   id        String   @id @default(cuid())
   userId    String
+  kind      String   @default("referral") // referral | cashback
   inviteeId String
-  tradeId   String   @unique
+  tradeId   String
   chain     Chain
   feeUsd    Decimal  @db.Decimal(18, 4)
   rewardUsd Decimal  @db.Decimal(18, 4)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([tradeId, kind])
   @@index([userId, createdAt])
 }
 

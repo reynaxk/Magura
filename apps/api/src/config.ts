@@ -25,6 +25,15 @@ const Env = z.object({
   /** Treasury wallets that receive Magura's trading fee. Public addresses, not secrets. */
   FEE_WALLET_SOLANA: z.string().min(32).max(44).optional(),
   FEE_WALLET_EVM: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+  /** Public URL of this API (for webhooks), e.g. https://api-production.up.railway.app */
+  API_PUBLIC_URL: z.string().url().optional(),
+  /** Telegram alerts bot (from @BotFather). */
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  /** Coinbase Developer Platform key for the card / Apple Pay onramp. */
+  CDP_API_KEY_ID: z.string().optional(),
+  CDP_API_KEY_SECRET: z.string().optional(),
 });
 
 export const env = Env.parse(process.env);

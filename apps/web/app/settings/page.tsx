@@ -26,7 +26,40 @@ const NOTIFS = [
   ['live', 'Going live', 'Someone you follow starts a stream'],
   ['price', 'Price alerts', 'Your saved alerts hit'],
   ['group', 'Group chat', 'Mentions and replies'],
+  ['alert', 'Wallet & coin alerts', 'Tracked wallets trade, friends buy your coins, loud rooms'],
+  ['order', 'Orders', 'Take profit, stop loss and limit orders fire'],
 ] as const;
+
+function TelegramRow({ linked, onChange }: { linked: boolean; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ available: boolean; url?: string }>('/me/telegram/link', { method: 'POST' });
+      if (r.available && r.url) window.open(r.url, '_blank', 'noopener');
+      else toast({ title: 'Telegram alerts are coming soon', body: 'The Magura bot is not switched on yet' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-line-2 bg-raised p-3.5">
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold">Telegram</span>
+        <span className="text-xs text-muted">{linked ? 'Alerts also go to your Telegram chat.' : 'Get your alerts in Telegram too.'}</span>
+      </span>
+      {linked ? (
+        <button className="btn-ghost ml-auto h-9 px-4 text-xs" onClick={() => api('/me/telegram', { method: 'DELETE' }).then(onChange)}>
+          Disconnect
+        </button>
+      ) : (
+        <button className="btn-lime ml-auto h-9 px-4 text-xs" disabled={busy} onClick={connect}>
+          Connect Telegram
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { me, login, logout, refresh } = useSession();
@@ -221,6 +254,7 @@ export default function SettingsPage() {
         {sec === 'notif' && (
           <>
             <h2 className="text-lg font-semibold">Notifications</h2>
+            <TelegramRow linked={!!s.telegramChatId} onChange={refresh} />
             <div className="label grid grid-cols-[1fr_80px_80px] gap-2.5 border-b border-line pb-2">
               <span>Event</span>
               <span className="text-center">Push</span>

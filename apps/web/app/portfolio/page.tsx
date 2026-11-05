@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { AddFunds } from '@/components/add-funds';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fmtUsd, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
@@ -121,7 +122,12 @@ export default function PortfolioPage() {
 
       <div className="flex flex-wrap gap-5">
         <section className="panel flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-6">
-          <span className="text-[13px] text-muted">Deployed in open positions</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-muted">Deployed in open positions</span>
+            <span className="ml-auto">
+              <AddFunds />
+            </span>
+          </div>
           <span className="num text-[40px] font-semibold tracking-tight">{fmtUsd(deployed, { compact: false })}</span>
           <div className="num flex flex-wrap gap-6 text-[13px]">
             <span>

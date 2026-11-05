@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CHAINS, bpsToPct, fromBaseUnits, nextTier, type ChainId, type SwapQuote, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -26,6 +26,8 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
   const [busy, setBusy] = useState(false);
   const slippageBps = Number(me?.settings?.slippageBps ?? 100);
   const wallet = addressFor(chain);
+  const rewards = useQuery({ queryKey: ['rewards'], queryFn: () => api<{ cashback: { tier: { name: string; pct: number } } }>('/me/rewards'), enabled: !!me, staleTime: 300_000 });
+  const cashbackPct = rewards.data?.cashback.tier.pct ?? 0;
 
   useEffect(() => setQuote(null), [side, amount, chain, token]);
 
@@ -162,6 +164,12 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
                 <span>Magura fee</span>
                 <span className="num text-text">{quote.fee.bps ? `${bpsToPct(quote.fee.bps)} · $${(quote.fee.usd ?? 0).toFixed(2)}` : '—'}</span>
               </div>
+              {cashbackPct > 0 && !!quote.fee.usd && (
+                <div className="flex justify-between text-muted">
+                  <span>Cashback ({cashbackPct}%)</span>
+                  <span className="num text-lime">−${((quote.fee.usd * cashbackPct) / 100).toFixed(2)}</span>
+                </div>
+              )}
               {quote.amountUsd != null && nextTier(chain, quote.amountUsd) && (
                 <div className="text-[11px] text-lime">
                   Trade ${nextTier(chain, quote.amountUsd)!.atUsd}+ to pay {bpsToPct(nextTier(chain, quote.amountUsd)!.bps)}

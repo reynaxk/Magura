@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import type { Trade, User } from '@magura/db';
-import { CHAINS, REFERRAL, type ChainId } from '@magura/shared';
+import { CHAINS, REFERRAL, cashbackTierFor, type ChainId } from '@magura/shared';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { NotificationsService } from '../notifications/notifications.module';
 import { TradingService } from '../trading/trading.service';
@@ -54,14 +54,31 @@ export class ReferralsService implements OnModuleInit {
     return { ok: true, inviter: inviter.handle };
   }
 
+  /** 30-day confirmed trading volume — sets the cashback tier. */
+  async volume30d(userId: string): Promise<number> {
+    const r = await this.prisma.db.trade.aggregate({
+      where: { userId, status: 'confirmed', createdAt: { gte: new Date(Date.now() - 30 * DAY) } },
+      _sum: { amountUsd: true },
+    });
+    return Number(r._sum.amountUsd ?? 0);
+  }
+
   private async accrue(t: Trade) {
     const fee = Number(t.feeUsd ?? 0);
     if (fee <= 0) return;
+    // cashback for the trader
+    const { tier } = cashbackTierFor(await this.volume30d(t.userId));
+    if (tier.pct > 0) {
+      await this.prisma.db.rewardEntry
+        .create({ data: { userId: t.userId, kind: 'cashback', inviteeId: t.userId, tradeId: t.id, chain: t.chain, feeUsd: fee, rewardUsd: (fee * tier.pct) / 100 } })
+        .catch(() => undefined); // (trade, kind) unique → already counted
+    }
+    // fee share for whoever invited them
     const ref = await this.prisma.db.referral.findUnique({ where: { inviteeId: t.userId } });
     if (!ref) return;
     await this.prisma.db.rewardEntry
-      .create({ data: { userId: ref.inviterId, inviteeId: t.userId, tradeId: t.id, chain: t.chain, feeUsd: fee, rewardUsd: fee * REFERRAL.inviterShare } })
-      .catch(() => undefined); // unique tradeId → already counted
+      .create({ data: { userId: ref.inviterId, kind: 'referral', inviteeId: t.userId, tradeId: t.id, chain: t.chain, feeUsd: fee, rewardUsd: fee * REFERRAL.inviterShare } })
+      .catch(() => undefined);
   }
 
   async summary(user: User) {
@@ -72,18 +89,27 @@ export class ReferralsService implements OnModuleInit {
         take: 100,
         include: { invitee: { select: { handle: true, avatarUrl: true } } },
       }),
-      this.prisma.db.rewardEntry.groupBy({ by: ['inviteeId'], where: { userId: user.id }, _sum: { rewardUsd: true, feeUsd: true }, _count: true }),
+      this.prisma.db.rewardEntry.groupBy({ by: ['inviteeId'], where: { userId: user.id, kind: 'referral' }, _sum: { rewardUsd: true, feeUsd: true }, _count: true }),
       this.prisma.db.rewardClaim.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } }),
       this.prisma.db.rewardEntry.aggregate({ where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 7 * DAY) } }, _sum: { rewardUsd: true } }),
     ]);
     const byInvitee = new Map(earned.map((e) => [e.inviteeId, e]));
-    const totalEarned = earned.reduce((s, e) => s + Number(e._sum.rewardUsd ?? 0), 0);
+    const referralEarned = earned.reduce((s, e) => s + Number(e._sum.rewardUsd ?? 0), 0);
+    const [cash, volume] = await Promise.all([
+      this.prisma.db.rewardEntry.aggregate({ where: { userId: user.id, kind: 'cashback' }, _sum: { rewardUsd: true } }),
+      this.volume30d(user.id),
+    ]);
+    const cashbackEarned = Number(cash._sum.rewardUsd ?? 0);
+    const totalEarned = referralEarned + cashbackEarned;
+    const { tier, next } = cashbackTierFor(volume);
     const claimed = claims.filter((c) => c.status !== 'rejected').reduce((s, c) => s + Number(c.amountUsd), 0);
     const invited = await this.isInvitee(user.id);
     return {
       code: user.handle,
       invitedBy: invited ? (await this.prisma.db.referral.findUnique({ where: { inviteeId: user.id }, include: { inviter: { select: { handle: true } } } }))?.inviter.handle ?? null : null,
+      cashback: { tier, next, volume30dUsd: volume, earnedUsd: cashbackEarned },
       totals: {
+        referralUsd: referralEarned,
         invites: invites.length,
         trading: earned.filter((e) => e._count > 0).length,
         earnedUsd: totalEarned,

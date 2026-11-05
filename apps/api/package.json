@@ -10,6 +10,7 @@
     "test": "node --test \"dist/**/*.spec.js\""
   },
   "dependencies": {
+    "@coinbase/cdp-sdk": "^1.60.0",
     "@magura/chains": "workspace:*",
     "@magura/db": "workspace:*",
     "@magura/shared": "workspace:*",
@@ -23,17 +24,17 @@
     "@privy-io/server-auth": "^1.18.0",
     "@sentry/node": "^8.47.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "@solana/web3.js": "^1.98.0",
     "dotenv": "^16.4.7",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.2",
+    "prisma": "^7.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
-    "web-push": "^3.6.7",
-    "zod": "^3.24.1",
     "viem": "^2.21.0",
-    "@solana/web3.js": "^1.98.0",
-    "prisma": "^7.10.1"
+    "web-push": "^3.6.7",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

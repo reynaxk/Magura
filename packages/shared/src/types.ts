@@ -138,6 +138,8 @@ export interface CallAttachment {
   buyZone: string;
   target: string;
   invalidation: string;
+  /** Stamped by the server when the call is posted — used to score callers. */
+  priceAtCall?: number | null;
 }
 
 /** A row on the Hunt page. */

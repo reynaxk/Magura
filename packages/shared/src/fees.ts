@@ -3,9 +3,8 @@ import { CHAINS, type ChainId } from './chains';
 /**
  * Magura platform fee — tiered by trade size in USD.
  *
- *   $2 – 10.99    EVM 4%   · Solana 2.55%
- *   $11 – 99.99   2%
- *   $100 – 499.99 1%
+ *   $2 – 99.99    1%      ("never more than 1%")
+ *   $100 – 499.99 0.85%
  *   $500+         0.75%
  *
  * Trades under $2 are rejected. Users always pay their own gas (no sponsorship).
@@ -23,9 +22,8 @@ export interface FeeTier {
 }
 
 export const FEE_TIERS: FeeTier[] = [
-  { fromUsd: 2, toUsd: 11, svmBps: 255, evmBps: 400 },
-  { fromUsd: 11, toUsd: 100, svmBps: 200, evmBps: 200 },
-  { fromUsd: 100, toUsd: 500, svmBps: 100, evmBps: 100 },
+  { fromUsd: 2, toUsd: 100, svmBps: 100, evmBps: 100 },
+  { fromUsd: 100, toUsd: 500, svmBps: 85, evmBps: 85 },
   { fromUsd: 500, toUsd: null, svmBps: 75, evmBps: 75 },
 ];
 

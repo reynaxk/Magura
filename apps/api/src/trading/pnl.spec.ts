@@ -39,12 +39,12 @@ test('Magura fee tiers by trade size', async () => {
   const { feeBpsFor, MIN_TRADE_USD } = await import('@magura/shared');
   assert.equal(MIN_TRADE_USD, 2);
   assert.throws(() => feeBpsFor('solana', 1.99));
-  assert.equal(feeBpsFor('solana', 2), 255);
-  assert.equal(feeBpsFor('base', 10.5), 400);
-  assert.equal(feeBpsFor('bsc', 11), 200);
-  assert.equal(feeBpsFor('ethereum', 99.99), 200);
-  assert.equal(feeBpsFor('solana', 100), 100);
-  assert.equal(feeBpsFor('base', 499), 100);
+  assert.equal(feeBpsFor('solana', 2), 100);
+  assert.equal(feeBpsFor('base', 10.5), 100);
+  assert.equal(feeBpsFor('bsc', 11), 100);
+  assert.equal(feeBpsFor('ethereum', 99.99), 100);
+  assert.equal(feeBpsFor('solana', 100), 85);
+  assert.equal(feeBpsFor('base', 499), 85);
   assert.equal(feeBpsFor('solana', 500), 75);
   assert.equal(feeBpsFor('bsc', 25_000), 75);
 });

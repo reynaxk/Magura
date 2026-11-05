@@ -154,7 +154,6 @@ export default function TrenchesPage() {
           scope={`trenches-${filterFor}`}
           value={filters[filterFor][0]}
           onApply={filters[filterFor][1]}
-          countPath={`/market/trenches?stage=${filterFor}`}
         />
       )}
 

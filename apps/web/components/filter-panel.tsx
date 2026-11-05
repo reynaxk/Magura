@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   CHAIN_IDS,
   CHAINS,
@@ -14,7 +13,6 @@ import {
   type RangeKey,
   type SourceId,
 } from '@magura/shared';
-import { api } from '@/lib/api';
 
 /* ───────────── persistence ───────────── */
 
@@ -112,7 +110,6 @@ export function FilterPanel({
   scope,
   value,
   onApply,
-  countPath,
 }: {
   open: boolean;
   onClose: () => void;
@@ -120,14 +117,11 @@ export function FilterPanel({
   scope: string;
   value: CoinFilter;
   onApply: (f: CoinFilter) => void;
-  /** e.g. `/market/hunt?sort=hot` — `f` and `count=1` are appended */
-  countPath: string;
 }) {
   const [draft, setDraft] = useState<CoinFilter>(value);
   const [tab, setTab] = useState<'filters' | 'saved'>('filters');
   const [presets, setPresets] = useState<Preset[]>([]);
   const [presetName, setPresetName] = useState('');
-  const [debounced, setDebounced] = useState(draft);
 
   useEffect(() => {
     if (open) {
@@ -136,10 +130,6 @@ export function FilterPanel({
       setPresets(read<Preset[]>('magura:presets', []));
     }
   }, [open, value]);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(draft), 300);
-    return () => clearTimeout(t);
-  }, [draft]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -150,14 +140,6 @@ export function FilterPanel({
       document.body.style.overflow = '';
     };
   }, [open, onClose]);
-
-  const sep = countPath.includes('?') ? '&' : '?';
-  const count = useQuery({
-    queryKey: ['filter-count', countPath, JSON.stringify(debounced)],
-    queryFn: () => api<{ total: number }>(`${countPath}${sep}count=1&f=${encodeURIComponent(JSON.stringify(debounced))}`),
-    enabled: open,
-    placeholderData: (prev) => prev,
-  });
 
   const active = activeFilterCount(draft);
   const visibleSources = useMemo(() => SOURCES.filter((s) => s.chains.some((c) => draft.chains.includes(c))), [draft.chains]);
@@ -385,7 +367,7 @@ export function FilterPanel({
             }}
             className="h-[52px] flex-1 rounded-2xl bg-lime text-[15px] font-semibold text-[#07090A] shadow-[0_8px_30px_rgba(47,227,154,0.25)] hover:brightness-110"
           >
-            {count.data ? `Show ${count.data.total.toLocaleString()} coin${count.data.total === 1 ? '' : 's'}` : 'Show coins'}
+            Apply
           </button>
         </footer>
       </div>

@@ -69,7 +69,7 @@ export default function HuntPage() {
             <FilterButton filter={filter} onClick={() => setFiltersOpen(true)} />
           </div>
         )}
-        <FilterPanel open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Hunt" scope="hunt" value={filter} onApply={setFilter} countPath={`/market/hunt?sort=${sort}`} />
+        <FilterPanel open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Hunt" scope="hunt" value={filter} onApply={setFilter} />
 
         {debounced ? (
           <section className="panel p-2">

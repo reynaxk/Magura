@@ -78,13 +78,39 @@ function PresetEditor({ chain, onDone }: { chain: TradeTarget['chain']; onDone: 
   );
 }
 
+/** The size of your last buy on this chain — one tap to do it again. */
+function useLastBuy(chain: string) {
+  const [v, setV] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      try {
+        const raw = localStorage.getItem(`magura:last-buy:${chain}`);
+        setV(raw ? (JSON.parse(raw) as string) : null);
+      } catch {
+        setV(null);
+      }
+    };
+    read();
+    window.addEventListener('magura:last-buy', read);
+    return () => window.removeEventListener('magura:last-buy', read);
+  }, [chain]);
+  return v;
+}
+
 function Buttons({ target, compact }: { target: TradeTarget; compact?: boolean }) {
   const { run, busy, buyAmounts, sellPcts, native } = useInstantTrade(target);
+  const last = useLastBuy(target.chain);
   const h = compact ? 'h-9' : 'h-12 md:h-9';
   return (
     <>
-      <span className="flex items-center justify-between text-[11px] text-muted">
+      <span className="flex items-center gap-3 text-[11px] text-muted">
         Buy ({native})
+        {last && !buyAmounts.includes(last) && (
+          <button disabled={!!busy} onClick={() => run('buy', last)} title="Buy the same amount as your last buy" className="text-text-2 hover:text-lime">
+            Same as last · {last}
+          </button>
+        )}
+        <span className="ml-auto" />
         <AddFunds variant="link" defaultChain={target.chain === 'solana' ? 'solana' : target.chain === 'ethereum' ? 'ethereum' : 'base'} />
       </span>
       <div className="num grid grid-cols-4 gap-1.5 text-[13px] font-semibold">

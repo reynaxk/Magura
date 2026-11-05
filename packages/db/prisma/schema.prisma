@@ -58,6 +58,7 @@ model User {
   invites        Referral[]     @relation("inviter")
   rewards        RewardEntry[]
   rewardClaims   RewardClaim[]
+  priceAlerts    PriceAlert[]
 }
 
 model Wallet {
@@ -112,6 +113,32 @@ model UserSettings {
   copyConfirmAboveUsd Decimal @default(500) @db.Decimal(18, 2)
   // notifications: { event: { push: bool, app: bool } }
   notifications Json @default("{\"copy\":{\"push\":true,\"app\":true},\"call\":{\"push\":true,\"app\":true},\"dm\":{\"push\":true,\"app\":true},\"live\":{\"push\":false,\"app\":true},\"price\":{\"push\":true,\"app\":false},\"group\":{\"push\":false,\"app\":true}}")
+}
+
+/// "Tell me when $X goes above/below …" — price or market cap.
+model PriceAlert {
+  id           String    @id @default(cuid())
+  userId       String
+  chain        Chain
+  tokenAddress String
+  tokenSymbol  String
+  metric       String // price | mc
+  direction    String // above | below
+  value        Float
+  status       String    @default("active") // active | fired | cancelled
+  firedAt      DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId, status])
+}
+
+/// Server-generated keys the app needs at runtime (e.g. web-push VAPID), so nobody has to copy secrets around.
+model AppKey {
+  name      String   @id
+  value     String
+  createdAt DateTime @default(now())
 }
 
 /// A wallet a user watches (any wallet on-chain, not just Magura users).

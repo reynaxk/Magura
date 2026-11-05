@@ -41,6 +41,51 @@ export class ReferralsController {
     return this.refs.claim(user, b.chain);
   }
 
+  /** Month recap for a shareable card: trades, volume, realized PnL, win rate, best coin. */
+  @Public()
+  @Get('cards/recap/:handle/:month')
+  async recap(@Param('handle') handle: string, @Param('month') month: string, @OptionalUser() viewer?: User) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new NotFoundException();
+    const u = await this.prisma.db.user.findUnique({ where: { handle: handle.toLowerCase() }, include: { settings: true } });
+    if (!u) throw new NotFoundException();
+    if (u.settings && !u.settings.publicPnl && viewer?.id !== u.id) throw new ForbiddenException('private');
+    const [y, m] = month.split('-').map(Number);
+    const from = new Date(Date.UTC(y, m - 1, 1));
+    const to = new Date(Date.UTC(y, m, 1));
+    const all = await this.prisma.db.trade.findMany({ where: { userId: u.id, status: 'confirmed', createdAt: { lt: to } }, orderBy: { createdAt: 'asc' } });
+    const inMonth = all.filter((t) => t.createdAt >= from);
+    const toPnl = (xs: typeof all) => computePnl(xs.map((t) => ({ tokenKey: `${t.chain}:${t.tokenAddress}`, side: t.side as 'buy' | 'sell', amountIn: t.amountIn, amountOut: t.amountOut, amountUsd: Number(t.amountUsd ?? 0) })));
+    const end = toPnl(all);
+    const begin = toPnl(all.filter((t) => t.createdAt < from));
+    const realizedUsd = end.realizedUsd - begin.realizedUsd;
+    const costUsd = end.costUsd - begin.costUsd;
+    const closed = end.closed - begin.closed;
+    const wins = end.wins - begin.wins;
+    // best coin by realized PnL this month
+    let best: { symbol: string; chain: string; pnlUsd: number; pct: number | null } | null = null;
+    for (const key of new Set(inMonth.map((t) => `${t.chain}:${t.tokenAddress}`))) {
+      const xs = all.filter((t) => `${t.chain}:${t.tokenAddress}` === key);
+      const e = toPnl(xs);
+      const b = toPnl(xs.filter((t) => t.createdAt < from));
+      const pnl = e.realizedUsd - b.realizedUsd;
+      const cost = e.costUsd - b.costUsd;
+      if (pnl > 0 && (!best || pnl > best.pnlUsd)) best = { symbol: xs[xs.length - 1].tokenSymbol, chain: xs[0].chain, pnlUsd: pnl, pct: cost > 0 ? (pnl / cost) * 100 : null };
+    }
+    return {
+      handle: u.handle,
+      avatarUrl: u.avatarUrl,
+      month,
+      label: from.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+      trades: inMonth.length,
+      coins: new Set(inMonth.map((t) => `${t.chain}:${t.tokenAddress}`)).size,
+      volumeUsd: inMonth.reduce((s, t) => s + Number(t.amountUsd ?? 0), 0),
+      realizedUsd,
+      roiPct: costUsd > 0 ? (realizedUsd / costUsd) * 100 : null,
+      winRatePct: closed ? (wins / closed) * 100 : null,
+      best,
+    };
+  }
+
   /** Data for a shareable PnL card on one coin. Public when the trader shows their PnL. */
   @Public()
   @Get('cards/pnl/:handle/:chain/:token')

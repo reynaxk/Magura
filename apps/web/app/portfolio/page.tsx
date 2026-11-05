@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AddFunds } from '@/components/add-funds';
+import { RecapCard } from '@/components/recap-share';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fmtUsd, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
@@ -242,6 +243,8 @@ export default function PortfolioPage() {
           {subs.data?.length === 0 && <span className="text-sm text-muted">You&apos;re not copying anyone yet.</span>}
         </section>
       </div>
+
+      <RecapCard />
 
       <section id="activity" className="panel flex flex-col p-5">
         <h2 className="mb-2 text-[17px] font-semibold">Activity</h2>

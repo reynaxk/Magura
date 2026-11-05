@@ -84,6 +84,14 @@ export function useInstantTrade(target: TradeTarget | null) {
             source: opts.source ?? 'manual',
           },
         });
+        if (side === 'buy') {
+          try {
+            localStorage.setItem(`magura:last-buy:${target.chain}`, JSON.stringify(String(value)));
+            window.dispatchEvent(new Event('magura:last-buy'));
+          } catch {
+            /* ignore */
+          }
+        }
         const secs = ((performance.now() - started) / 1000).toFixed(1);
         const label = side === 'buy' ? `Bought ${target.symbol}` : `Sold ${value}% of ${target.symbol}`;
         toast({ title: label, body: `Sent in ${secs}s${quote.amountUsd ? ` · $${quote.amountUsd.toFixed(2)}` : ''} — confirming on-chain`, tone: 'lime' });

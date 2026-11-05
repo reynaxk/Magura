@@ -30,3 +30,11 @@ test('limit buy fires when market cap drops to the target', () => {
   assert.equal(shouldFire(lb, 1, 45_000), true);
   assert.equal(shouldFire(lb, 1, null), false);
 });
+
+test('price alerts fire on crossing the target', async () => {
+  const { alertHit } = await import('../notifications/price-alerts.rules');
+  assert.equal(alertHit({ metric: 'mc', direction: 'above', value: 100_000 }, 1, 99_000), false);
+  assert.equal(alertHit({ metric: 'mc', direction: 'above', value: 100_000 }, 1, 100_000), true);
+  assert.equal(alertHit({ metric: 'price', direction: 'below', value: 0.5 }, 0.49, null), true);
+  assert.equal(alertHit({ metric: 'price', direction: 'below', value: 0.5 }, null, null), false);
+});

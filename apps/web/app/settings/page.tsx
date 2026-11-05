@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CHAIN_IDS, CHAINS, FEE_TIERS, MIN_TRADE_USD, bpsToPct, shortAddr } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { usePush } from '@/lib/push';
 import { toast } from '@/components/toaster';
 import { Avatar, Empty, Toggle, Icon } from '@/components/ui';
 
@@ -63,6 +64,34 @@ function AntiPhishing({ current, onSave }: { current: string | null; onSave: (v:
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function PushRow() {
+  const { state, busy, enable, disable } = usePush();
+  const text: Record<string, string> = {
+    on: 'Alerts pop up on this device, even when Magura is closed.',
+    off: 'Get alerts on this phone or computer, even when Magura is closed.',
+    denied: 'Notifications are blocked for Magura in your browser settings.',
+    unsupported: 'This browser can’t receive push. On iPhone, add Magura to your Home Screen first (Share › Add to Home Screen).',
+    unavailable: 'Push is not switched on for Magura yet.',
+  };
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-line-2 bg-raised p-3.5">
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold">This device</span>
+        <span className="text-xs text-muted">{text[state]}</span>
+      </span>
+      {state === 'on' ? (
+        <button className="btn-ghost ml-auto h-9 shrink-0 px-4 text-xs" onClick={disable}>
+          Turn off
+        </button>
+      ) : state === 'off' ? (
+        <button className="btn-lime ml-auto h-9 shrink-0 px-4 text-xs" disabled={busy} onClick={enable}>
+          Turn on
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -291,6 +320,7 @@ export default function SettingsPage() {
         {sec === 'notif' && (
           <>
             <h2 className="text-lg font-semibold">Notifications</h2>
+            <PushRow />
             <TelegramRow linked={!!s.telegramChatId} onChange={refresh} />
             <div className="label grid grid-cols-[1fr_80px_80px] gap-2.5 border-b border-line pb-2">
               <span>Event</span>

@@ -15,6 +15,7 @@ import { ReferralsController } from './social/referrals.controller';
 import { FeedController } from './social/feed.controller';
 import { CompetitionsController, CompetitionsService } from './social/competitions.controller';
 import { OnrampController } from './trading/onramp.controller';
+import { PriceAlertsController, PriceAlertsService } from './notifications/price-alerts';
 import { AlertsService } from './notifications/alerts.service';
 import { TelegramController } from './notifications/telegram.controller';
 import { TrackedController } from './market/tracked.controller';
@@ -65,7 +66,8 @@ class HealthController {
     TelegramController,
     CompetitionsController,
     OnrampController,
+    PriceAlertsController,
   ],
-  providers: [BootstrapService, HuntService, CoinActivityService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, ReferralsService, AlertsService, CompetitionsService],
+  providers: [BootstrapService, HuntService, CoinActivityService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
 })
 export class AppModule {}

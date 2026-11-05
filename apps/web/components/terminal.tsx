@@ -10,6 +10,7 @@ import { PriceChart, type ChartMarker } from './price-chart';
 import { TradeTicket } from './trade-ticket';
 import { InstantTrade } from './instant-trade';
 import { CoinActivity } from './coin-activity';
+import { PriceAlertButton } from './price-alerts';
 import { Avatar, Delta, Flash, RiskTags, Segmented, Skeleton } from './ui';
 
 interface TokenInfo {
@@ -109,7 +110,12 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
           <div className="flex items-center gap-3">
             <span className="label">Risk</span>
             <RiskTags risk={info.data?.risk ?? null} />
-            <a href={`${CHAINS[chain].explorer}/token/${address}`} target="_blank" rel="noreferrer" className="num ml-auto text-xs text-muted hover:text-text">
+            <span className="ml-auto">
+              {symbol !== '…' && (
+                <PriceAlertButton chain={chain} token={address} symbol={symbol} priceUsd={pair?.priceUsd ?? tok?.priceUsd ?? null} mcUsd={pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd ?? null} />
+              )}
+            </span>
+            <a href={`${CHAINS[chain].explorer}/token/${address}`} target="_blank" rel="noreferrer" className="num text-xs text-muted hover:text-text">
               {address.slice(0, 6)}…{address.slice(-4)} ↗
             </a>
           </div>

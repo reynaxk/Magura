@@ -6,13 +6,16 @@ import { Providers } from './providers';
 import { Header } from '@/components/header';
 import { StatusBar } from '@/components/status-bar';
 import { Shortcuts } from '@/components/shortcuts';
+import { InstallHint } from '@/components/install-hint';
 
 export const metadata: Metadata = {
   title: { default: 'Magura — Social spot trading', template: '%s · Magura' },
   description: 'Social spot trading terminal. Trade together, copy the best, live in every coin.',
+  appleWebApp: { capable: true, title: 'Magura', statusBarStyle: 'black-translucent' },
+  icons: { apple: '/apple-touch-icon.png' },
 };
 
-export const viewport: Viewport = { themeColor: '#07090A', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#08090C', viewportFit: 'cover', width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children, drawer }: { children: React.ReactNode; drawer: React.ReactNode }) {
   return (
@@ -24,6 +27,7 @@ export default function RootLayout({ children, drawer }: { children: React.React
           {drawer}
           <StatusBar />
           <Shortcuts />
+          <InstallHint />
         </Providers>
       </body>
     </html>

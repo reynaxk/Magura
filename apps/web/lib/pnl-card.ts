@@ -26,3 +26,17 @@ export function heldFor(ms: number) {
 
 export const pctText = (p: number | null) => (p == null ? '—' : `${p >= 0 ? '+' : '−'}${Math.abs(p) >= 1000 ? Math.round(Math.abs(p)).toLocaleString('en-US') : Math.abs(p).toFixed(Math.abs(p) >= 100 ? 0 : 1)}%`);
 export const usdText = (v: number) => `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export interface RecapData {
+  handle: string;
+  avatarUrl: string | null;
+  month: string;
+  label: string;
+  trades: number;
+  coins: number;
+  volumeUsd: number;
+  realizedUsd: number;
+  roiPct: number | null;
+  winRatePct: number | null;
+  best: { symbol: string; chain: string; pnlUsd: number; pct: number | null } | null;
+}

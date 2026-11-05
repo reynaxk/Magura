@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Global, Injectable, Module, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Global, Injectable, Module, OnModuleInit, Param, Post } from '@nestjs/common';
 import webpush from 'web-push';
 import { z } from 'zod';
 import type { User } from '@magura/db';
@@ -10,8 +10,31 @@ import { RealtimeService } from '../realtime/realtime.service';
 
 export type NotifyKind = 'copy' | 'call' | 'dm' | 'live' | 'price' | 'group' | 'order' | 'alert';
 
-const pushEnabled = !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
-if (pushEnabled) webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!);
+/** VAPID keys: from env if set, otherwise generated once and kept in the database. */
+const vapid: { publicKey: string | null } = { publicKey: null };
+let pushEnabled = false;
+async function initVapid(prisma: PrismaService) {
+  if (pushEnabled) return;
+  let pub = env.VAPID_PUBLIC_KEY;
+  let priv = env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    const row = await prisma.db.appKey.findUnique({ where: { name: 'vapid' } });
+    if (row) ({ publicKey: pub, privateKey: priv } = JSON.parse(row.value));
+    else {
+      const k = webpush.generateVAPIDKeys();
+      await prisma.db.appKey.create({ data: { name: 'vapid', value: JSON.stringify(k) } }).catch(async () => {
+        // another replica won the race — use theirs
+        const r = await prisma.db.appKey.findUniqueOrThrow({ where: { name: 'vapid' } });
+        Object.assign(k, JSON.parse(r.value));
+      });
+      pub = k.publicKey;
+      priv = k.privateKey;
+    }
+  }
+  webpush.setVapidDetails(env.VAPID_SUBJECT, pub!, priv!);
+  vapid.publicKey = pub!;
+  pushEnabled = true;
+}
 
 /** Send one alert to a linked Telegram chat. */
 export async function sendTelegram(chatId: string, title: string, body: string, href: string | null, code?: string | null) {
@@ -32,11 +55,15 @@ export async function sendTelegram(chatId: string, title: string, body: string, 
 }
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rt: RealtimeService,
   ) {}
+
+  async onModuleInit() {
+    await initVapid(this.prisma).catch(() => undefined);
+  }
 
   /** Respects each user's per-event push / in-app preferences from Settings. */
   async notify(userId: string, kind: NotifyKind, title: string, body: string, href: string | null = null) {
@@ -86,7 +113,7 @@ export class NotificationsController {
   @Public()
   @Get('vapid')
   vapid() {
-    return { publicKey: env.VAPID_PUBLIC_KEY ?? null };
+    return { publicKey: vapid.publicKey };
   }
 
   @Post('push-subscriptions')

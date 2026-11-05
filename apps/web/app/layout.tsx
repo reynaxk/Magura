@@ -6,7 +6,7 @@ import { Providers } from './providers';
 import { Header } from '@/components/header';
 
 export const metadata: Metadata = {
-  title: { default: 'Magura — FIND.TRADE.REPEAT', template: '%s · Magura' },
+  title: { default: 'Magura — Social spot trading', template: '%s · Magura' },
   description: 'Social spot trading terminal. Trade together, copy the best, live in every coin.',
 };
 

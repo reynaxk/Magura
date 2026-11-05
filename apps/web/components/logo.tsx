@@ -18,10 +18,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <LogoMark size={compact ? 30 : 36} />
-      <span className="flex flex-col leading-none">
-        <span className="text-[17px] font-semibold tracking-[0.16em]">MAGURA</span>
-        {!compact && <span className="num mt-1 text-[8.5px] tracking-[0.28em] text-lime">FIND.TRADE.REPEAT</span>}
-      </span>
+      <span className="text-[17px] font-semibold leading-none tracking-[0.16em]">MAGURA</span>
     </span>
   );
 }

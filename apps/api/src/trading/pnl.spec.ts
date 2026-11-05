@@ -37,10 +37,10 @@ test('trenches stages: bonding curve vs DEX-native', () => {
 
 test('Magura fee tiers by trade size', async () => {
   const { feeBpsFor, MIN_TRADE_USD } = await import('@magura/shared');
-  assert.equal(MIN_TRADE_USD, 1);
-  assert.throws(() => feeBpsFor('solana', 0.99));
+  assert.equal(MIN_TRADE_USD, 2);
+  assert.throws(() => feeBpsFor('solana', 1.99));
   const cases: [number, number][] = [
-    [1, 200], [24.99, 200], [25, 175], [49.99, 175], [50, 150], [99.99, 150], [100, 125], [199.99, 125],
+    [2, 200], [24.99, 200], [25, 175], [49.99, 175], [50, 150], [99.99, 150], [100, 125], [199.99, 125],
     [200, 100], [499.99, 100], [500, 75], [999.99, 75], [1000, 60], [4999.99, 60], [5000, 40], [9999.99, 40],
     [10000, 25], [24999.99, 25], [25000, 20], [1_000_000, 20],
   ];

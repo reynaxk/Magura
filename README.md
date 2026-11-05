@@ -11,7 +11,7 @@ No perps, no leverage — by design.
 |---|---|
 | **Terminal** | Chart (GeckoTerminal OHLCV), spot buy/sell (Jupiter on Solana, KyberSwap on EVM), GoPlus risk, Polymarket predictions, coin room + world chat |
 | **Trenches** | Live **New Pairs → Almost Survived → Survived** from Pump.fun (PumpPortal), Clanker, Four.meme / Flap / Pons (on-chain factory events) and DEX new pools; quick buy; friends who aped; coin rooms |
-| **Fees** | Size-tiered platform fee in SOL/ETH/BNB: from 2% ($1–24.99) down to 0.20% ($25,000+) across 10 size tiers — see `packages/shared/src/fees.ts`. Min trade $1. Users pay their own gas. Set `FEE_WALLET_SOLANA` and `FEE_WALLET_EVM` to receive fees |
+| **Fees** | Size-tiered platform fee in SOL/ETH/BNB: from 2% ($2–24.99) down to 0.20% ($25,000+) across 10 size tiers — see `packages/shared/src/fees.ts`. Min trade $2. Users pay their own gas. Set `FEE_WALLET_SOLANA` and `FEE_WALLET_EVM` to receive fees |
 | **Copy trading** | Leaderboard (realized spot PnL), proportional or fixed sizing, max per buy, auto-stop at loss, memecoin filter, copy sells. Runs automatically through Privy session signers or asks the copier to confirm |
 | **Social** | World chat, a room per coin, groups with channels + spot call cards, DMs with message requests, notifications + Web Push |
 | **Calls & Live** | 1:1 voice/video, group voice rooms, screen/chart sharing, live streams — all via Cloudflare Realtime (SFU) |

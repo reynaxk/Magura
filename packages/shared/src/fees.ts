@@ -3,7 +3,7 @@ import { CHAINS, type ChainId } from './chains';
 /**
  * Magura platform fee — tiered by trade size in USD (same on every chain).
  *
- *   $1 – 24.99          2.00%
+ *   $2 – 24.99          2.00%
  *   $25 – 49.99         1.75%
  *   $50 – 99.99         1.50%
  *   $100 – 199.99       1.25%
@@ -14,10 +14,10 @@ import { CHAINS, type ChainId } from './chains';
  *   $10,000 – 24,999.99 0.25%
  *   $25,000+            0.20%
  *
- * Trades under $1 are rejected. Users always pay their own gas (no sponsorship).
+ * Trades under $2 are rejected. Users always pay their own gas (no sponsorship).
  * Fees are charged in the chain's native coin (SOL / ETH / BNB).
  */
-export const MIN_TRADE_USD = 1;
+export const MIN_TRADE_USD = 2;
 
 export interface FeeTier {
   /** inclusive lower bound in USD */
@@ -31,7 +31,7 @@ export interface FeeTier {
 const tier = (fromUsd: number, toUsd: number | null, bps: number): FeeTier => ({ fromUsd, toUsd, svmBps: bps, evmBps: bps });
 
 export const FEE_TIERS: FeeTier[] = [
-  tier(1, 25, 200),
+  tier(2, 25, 200),
   tier(25, 50, 175),
   tier(50, 100, 150),
   tier(100, 200, 125),

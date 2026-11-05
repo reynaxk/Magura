@@ -70,8 +70,8 @@ export class ReferralsService implements OnModuleInit {
     const { tier } = cashbackTierFor(await this.volume30d(t.userId));
     if (tier.pct > 0) {
       await this.prisma.db.rewardEntry
-        .create({ data: { userId: t.userId, kind: 'cashback', inviteeId: t.userId, tradeId: t.id, chain: t.chain, feeUsd: fee, rewardUsd: (fee * tier.pct) / 100 } })
-        .catch(() => undefined); // (trade, kind) unique → already counted
+        .create({ data: { userId: t.userId, kind: 'cashback', inviteeId: t.userId, tradeId: `cb:${t.id}`, chain: t.chain, feeUsd: fee, rewardUsd: (fee * tier.pct) / 100 } })
+        .catch(() => undefined); // unique tradeId → already counted
     }
     // fee share for whoever invited them
     const ref = await this.prisma.db.referral.findUnique({ where: { inviteeId: t.userId } });

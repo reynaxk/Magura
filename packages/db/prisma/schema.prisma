@@ -229,14 +229,14 @@ model RewardEntry {
   userId    String
   kind      String   @default("referral") // referral | cashback
   inviteeId String
-  tradeId   String
+  /// the trade id (referral) or "cb:<trade id>" (cashback) — one line of each kind per trade
+  tradeId   String   @unique
   chain     Chain
   feeUsd    Decimal  @db.Decimal(18, 4)
   rewardUsd Decimal  @db.Decimal(18, 4)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([tradeId, kind])
   @@index([userId, createdAt])
 }
 

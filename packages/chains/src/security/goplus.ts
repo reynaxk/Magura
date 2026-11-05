@@ -9,8 +9,34 @@ const pct = (v: unknown) => {
 };
 const flag = (v: unknown) => (v == null || v === '' ? null : String(v) === '1');
 
+export interface TopHolder {
+  address: string;
+  pct: number;
+  tag: string | null;
+  isContract: boolean;
+  isLocked: boolean;
+}
+
 /** Token security + holder concentration from GoPlus. */
 export const goplus = {
+  /** Top holders (GoPlus returns up to ~10–20) plus the creator address. */
+  async topHolders(chain: ChainId, address: string): Promise<{ creator: string | null; holders: TopHolder[] }> {
+    const headers: Record<string, string> = process.env.GOPLUS_ACCESS_TOKEN ? { Authorization: process.env.GOPLUS_ACCESS_TOKEN } : {};
+    const url = chain === 'solana' ? `${BASE}/solana/token_security?contract_addresses=${address}` : `${BASE}/token_security/${CHAINS[chain].goplus}?contract_addresses=${address}`;
+    const res = await fetchJson<{ result: Record<string, any> }>(url, { headers });
+    const r = res.result?.[chain === 'solana' ? address : address.toLowerCase()];
+    if (!r) return { creator: null, holders: [] };
+    const creator: string | null = chain === 'solana' ? (r.creators?.[0]?.address ?? null) : (r.creator_address ?? null);
+    const holders: TopHolder[] = (r.holders ?? []).map((h: any) => ({
+      address: h.account ?? h.address,
+      pct: Number(h.percent) * 100,
+      tag: h.tag || null,
+      isContract: String(h.is_contract) === '1',
+      isLocked: String(h.is_locked) === '1',
+    }));
+    return { creator, holders };
+  },
+
   async tokenRisk(chain: ChainId, address: string): Promise<TokenRisk | null> {
     const headers: Record<string, string> = process.env.GOPLUS_ACCESS_TOKEN
       ? { Authorization: process.env.GOPLUS_ACCESS_TOKEN }

@@ -6,7 +6,13 @@ import { createChart, type IChartApi, type ISeriesApi, type UTCTimestamp } from 
 import type { Candle, ChainId, Timeframe } from '@magura/shared';
 import { api } from '@/lib/api';
 
-export function PriceChart({ chain, pool, tf, height = 320 }: { chain: ChainId; pool: string | null; tf: Timeframe; height?: number }) {
+export interface ChartMarker {
+  at: string;
+  side: 'buy' | 'sell';
+  label: string;
+}
+
+export function PriceChart({ chain, pool, tf, height = 320, markers = [] }: { chain: ChainId; pool: string | null; tf: Timeframe; height?: number; markers?: ChartMarker[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -50,6 +56,36 @@ export function PriceChart({ chain, pool, tf, height = 320 }: { chain: ChainId; 
     candleRef.current.setData(data.map((c) => ({ time: c.t as UTCTimestamp, open: c.o, high: c.h, low: c.l, close: c.c })));
     volRef.current.setData(data.map((c) => ({ time: c.t as UTCTimestamp, value: c.v, color: c.c >= c.o ? 'rgba(47,227,154,0.22)' : 'rgba(255,107,107,0.22)' })));
   }, [candles.data]);
+
+  // Friends' buys and sells, snapped to the candle they happened in.
+  useEffect(() => {
+    const data = candles.data;
+    if (!data?.length || !candleRef.current) return;
+    const times = data.map((c) => c.t);
+    const snap = (sec: number) => {
+      let lo = 0;
+      let hi = times.length - 1;
+      if (sec < times[0]) return null;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (times[mid] <= sec) lo = mid;
+        else hi = mid - 1;
+      }
+      return times[lo];
+    };
+    const ms = markers
+      .map((m) => ({ m, t: snap(Math.floor(new Date(m.at).getTime() / 1000)) }))
+      .filter((x): x is { m: ChartMarker; t: number } => x.t != null)
+      .sort((a, b) => a.t - b.t)
+      .map(({ m, t }) => ({
+        time: t as UTCTimestamp,
+        position: m.side === 'buy' ? ('belowBar' as const) : ('aboveBar' as const),
+        color: m.side === 'buy' ? '#2FE39A' : '#FF6B6B',
+        shape: m.side === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
+        text: m.label,
+      }));
+    candleRef.current.setMarkers(ms);
+  }, [candles.data, markers]);
 
   return (
     <div className="relative rounded-[14px] border border-[#171A22] bg-bar" style={{ height }}>

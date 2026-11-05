@@ -14,6 +14,7 @@ import {
   type ChainId,
   type SwapQuote,
   type TradeAttachment,
+  withReferralDiscount,
 } from '@magura/shared';
 import { env } from '../config';
 import { ChatService } from '../chat/chat.service';
@@ -27,6 +28,8 @@ export interface QuoteInput {
   amount: string;
   slippageBps: number;
   wallet: string;
+  /** Who is trading — invited users get the referral discount. */
+  userId?: string;
 }
 
 export interface RecordTradeInput {
@@ -42,7 +45,7 @@ export interface RecordTradeInput {
   /** Optional client-reported wallet value — used for proportional copy sizing. */
   portfolioUsd?: number;
   shareToRoom?: boolean;
-  source?: 'manual' | 'quickbuy' | 'copy' | 'call';
+  source?: 'manual' | 'quickbuy' | 'copy' | 'call' | 'order';
   copyExecutionId?: string;
 }
 
@@ -58,6 +61,12 @@ export class TradingService {
     private readonly redis: RedisService,
     private readonly chat: ChatService,
   ) {}
+
+  private discountLookup: (userId: string) => Promise<boolean> = async () => false;
+  /** Referrals plug in here: invited users get a fee discount. */
+  setDiscountLookup(fn: (userId: string) => Promise<boolean>) {
+    this.discountLookup = fn;
+  }
 
   onConfirmed(fn: ConfirmedListener) {
     this.listeners.push(fn);
@@ -92,9 +101,11 @@ export class TradingService {
     if (!nUsd) throw new BadRequestException('price_unavailable');
     const receiver = (svm ? env.FEE_WALLET_SOLANA : env.FEE_WALLET_EVM) ?? null;
     const toUsd = (base: string | bigint) => (Number(base) / 10 ** dec) * nUsd;
+    const discounted = q.userId ? await this.discountLookup(q.userId).catch(() => false) : false;
     const bpsFor = (usd: number) => {
       try {
-        return feeBpsFor(q.chain, usd);
+        const bps = feeBpsFor(q.chain, usd);
+        return discounted ? withReferralDiscount(bps) : bps;
       } catch (e) {
         if (e instanceof TradeTooSmallError) throw new BadRequestException(`min_trade_${MIN_TRADE_USD}_usd`);
         throw e;

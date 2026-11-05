@@ -29,7 +29,41 @@ export interface NewPool {
   dex: string | null;
 }
 
+export interface PoolTrade {
+  side: 'buy' | 'sell';
+  wallet: string;
+  usd: number | null;
+  /** Token price in USD at the moment of the trade. */
+  priceUsd: number | null;
+  /** Native-coin amount on the native side of the swap, when the pool quotes against it. */
+  tokenAmount: number | null;
+  txHash: string;
+  at: string;
+}
+
 export const geckoterminal = {
+  /** Last ~300 swaps on a pool, newest first. */
+  async trades(chain: ChainId, pool: string, minUsd = 0): Promise<PoolTrade[]> {
+    const net = CHAINS[chain].geckoterminal;
+    const res = await fetchJson<{ data: any[] }>(
+      `${BASE}/networks/${net}/pools/${pool}/trades${minUsd > 0 ? `?trade_volume_in_usd_greater_than=${minUsd}` : ''}`,
+      { headers: HEADERS },
+    );
+    return res.data.map((d) => {
+      const a = d.attributes;
+      const buy = a.kind === 'buy';
+      return {
+        side: buy ? 'buy' : 'sell',
+        wallet: a.tx_from_address,
+        usd: num(a.volume_in_usd),
+        priceUsd: num(buy ? a.price_to_in_usd : a.price_from_in_usd),
+        tokenAmount: num(buy ? a.to_token_amount : a.from_token_amount),
+        txHash: a.tx_hash,
+        at: a.block_timestamp,
+      } as PoolTrade;
+    });
+  },
+
   async ohlcv(chain: ChainId, pool: string, tf: Timeframe, limit = 300): Promise<Candle[]> {
     const { period, aggregate } = TF[tf];
     const net = CHAINS[chain].geckoterminal;

@@ -99,7 +99,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
           <span className="label px-2 pb-1.5 pt-4">Voice & video</span>
           {voice.map((c) => (
             <button key={c.id} onClick={() => (me ? startVoice.mutate(c.id) : login())} className="flex h-9 items-center gap-2 rounded-[10px] px-2.5 text-left text-sm font-semibold text-muted hover:bg-panel hover:text-text">
-              <Svg d={Icon.mic} size={15} color="#9D8CFF" />
+              <Svg d={Icon.mic} size={15} color="currentColor" />
               {c.name}
               <span className="ml-auto text-[11px] text-lime">Join</span>
             </button>
@@ -129,7 +129,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
             ))}
             {voice.map((c) => (
               <button key={c.id} onClick={() => (me ? startVoice.mutate(c.id) : login())} className="chip shrink-0 gap-1.5 border-violet-line text-violet-2">
-                <Svg d={Icon.mic} size={13} color="#B9AEFF" />
+                <Svg d={Icon.mic} size={13} color="currentColor" />
                 {c.name}
               </button>
             ))}
@@ -143,8 +143,8 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               <span className="truncate text-[13px] text-muted">{channel.topic}</span>
             </div>
             {g.rules && (
-              <div className="mx-4 mt-3 hidden items-center gap-2.5 rounded-[14px] md:mx-5 md:mt-3.5 md:flex border border-[#2E2850] bg-violet-dim px-3.5 py-3 text-[13px] text-[#D9D2FF]">
-                <Svg d={Icon.pin} size={16} color="#B9AEFF" />
+              <div className="mx-4 mt-3 hidden items-center gap-2.5 rounded-[14px] md:mx-5 md:mt-3.5 md:flex border border-line-2 bg-raised px-3.5 py-3 text-[13px] text-text-2">
+                <Svg d={Icon.pin} size={16} color="currentColor" />
                 {g.rules}
               </div>
             )}

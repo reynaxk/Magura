@@ -9,6 +9,7 @@ import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
 import { HuntService, type HuntSort } from './hunt.service';
 import { TrenchesService } from './trenches.service';
+import { CoinActivityService } from './coin-activity.service';
 
 const addr = (chain: ChainId, a: string) => (chain === 'solana' ? a : a.toLowerCase());
 
@@ -19,6 +20,7 @@ export class MarketController {
     private readonly prisma: PrismaService,
     private readonly trenches: TrenchesService,
     private readonly hunt: HuntService,
+    private readonly activity: CoinActivityService,
   ) {}
 
   /** Hunt: discover coins. `f` = JSON CoinFilter from the Filters panel; `count=1` returns only the match count. */
@@ -85,6 +87,30 @@ export class MarketController {
     ]);
     if (!pair && !row) throw new NotFoundException('token_not_found');
     return { chain, address, pair, token: row, risk };
+  }
+
+  /** Live swaps on a coin, each wallet labelled (you, Magura, following, tracked, dev). */
+  @Public()
+  @Get('tokens/:chain/:address/trades')
+  coinTrades(@Param('chain') c: string, @Param('address') a: string, @Query('min') min = '0', @OptionalUser() user?: User) {
+    const chain = parse(zChain, c);
+    return this.activity.trades(chain, addr(chain, a), user?.id ?? null, Math.max(0, Number(min) || 0));
+  }
+
+  /** Top holders with labels (dev, pool, early buyer, Magura, tracked). */
+  @Public()
+  @Get('tokens/:chain/:address/holders')
+  coinHolders(@Param('chain') c: string, @Param('address') a: string, @OptionalUser() user?: User) {
+    const chain = parse(zChain, c);
+    return this.activity.holders(chain, addr(chain, a), user?.id ?? null);
+  }
+
+  /** Buys and sells by people you follow — chart markers. */
+  @Public()
+  @Get('tokens/:chain/:address/friends')
+  coinFriends(@Param('chain') c: string, @Param('address') a: string, @OptionalUser() user?: User) {
+    const chain = parse(zChain, c);
+    return this.activity.friendTrades(chain, addr(chain, a), user?.id ?? null);
   }
 
   @Public()

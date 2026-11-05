@@ -9,7 +9,8 @@ import { api } from '@/lib/api';
 import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
 import { useSession } from '@/lib/session';
 import type { LeaderRow } from '@/components/terminal';
-import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg, ChatBadge } from '@/components/ui';
+import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg, ChatBadge, Flash } from '@/components/ui';
+import { useDensity } from '@/lib/prefs';
 
 type Sort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
 
@@ -21,6 +22,8 @@ export default function HuntPage() {
   const [sort, setSort] = useState<Sort>('hot');
   const [filter, setFilter] = useStoredFilter('hunt');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [density, setDensity] = useDensity();
+  const compact = density === 'compact';
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
@@ -66,6 +69,16 @@ export default function HuntPage() {
                 ]}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setDensity(compact ? 'comfortable' : 'compact')}
+              aria-pressed={compact}
+              title="Row density"
+              className="hidden h-10 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:bg-hover md:flex"
+            >
+              <Svg d="M4 6h16M4 12h16M4 18h16" size={14} />
+              {compact ? 'Compact' : 'Comfortable'}
+            </button>
             <FilterButton filter={filter} onClick={() => setFiltersOpen(true)} />
           </div>
         )}
@@ -112,11 +125,11 @@ export default function HuntPage() {
                 <tbody>
                   {list.data?.map((t, i) => (
                     <tr key={`${t.chain}:${t.address}`} onClick={() => open(t.chain, t.address)} className="cursor-pointer border-b border-[#151820] hover:bg-hover">
-                      <td className="num py-3 pl-4 text-muted">{i + 1}</td>
+                      <td className={`num pl-4 text-muted ${compact ? 'py-1.5 text-xs' : 'py-3'}`}>{i + 1}</td>
                       <td>
                         <span className="flex items-center gap-2.5">
-                          <Avatar name={t.symbol} src={t.imageUrl} size={34} shape="circle" />
-                          <span className="flex min-w-0 flex-col">
+                          <Avatar name={t.symbol} src={t.imageUrl} size={compact ? 22 : 34} shape="circle" />
+                          <span className={`flex min-w-0 ${compact ? 'items-center gap-2' : 'flex-col'}`}>
                             <span className="flex items-center gap-1.5 font-semibold">
                               {t.symbol}
                               <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
@@ -127,7 +140,9 @@ export default function HuntPage() {
                           </span>
                         </span>
                       </td>
-                      <td className="num px-2.5 text-right">{t.priceUsd != null ? `$${fmtPrice(t.priceUsd)}` : '—'}</td>
+                      <td className="num px-2.5 text-right">
+                        <Flash value={t.priceUsd}>{t.priceUsd != null ? `$${fmtPrice(t.priceUsd)}` : '—'}</Flash>
+                      </td>
                       <td className="px-2.5 text-right">
                         <Delta value={t.change1h} />
                       </td>
@@ -155,7 +170,7 @@ export default function HuntPage() {
                         <RiskTags risk={t.risk} />
                       </td>
                       <td className="pr-4 text-right">
-                        <Link href={`/t/${t.chain}/${t.address}`} onClick={(e) => e.stopPropagation()} className="btn-lime h-8 px-3 text-xs">
+                        <Link href={`/t/${t.chain}/${t.address}`} onClick={(e) => e.stopPropagation()} className={`btn-lime px-3 text-xs ${compact ? 'h-7' : 'h-8'}`}>
                           Trade
                         </Link>
                       </td>
@@ -176,8 +191,8 @@ export default function HuntPage() {
                         {t.symbol}
                         <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
                         {t.chatCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-violet-2">
-                            <Svg d={Icon.chat} size={10} color="#B9AEFF" />
+                          <span className="flex items-center gap-0.5 text-[10px] text-lime">
+                            <Svg d={Icon.chat} size={10} color="currentColor" />
                             {t.chatCount}
                           </span>
                         )}

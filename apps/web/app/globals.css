@@ -17,10 +17,10 @@
   --color-lime: #2FE39A;
   --color-lime-dim: #0B1F17;
   --color-lime-line: #1D4A37;
-  --color-violet: #9d8cff;
-  --color-violet-2: #b9aeff;
-  --color-violet-dim: #17152a;
-  --color-violet-line: #3a3466;
+  --color-violet: #c9cfda;
+  --color-violet-2: #e9ecf2;
+  --color-violet-dim: #12151b;
+  --color-violet-line: #2a303c;
   --color-down: #ff6b6b;
   --color-down-2: #ff8a8a;
   --color-down-dim: #1a1012;
@@ -132,18 +132,34 @@ button:disabled {
 @utility h-app {
   height: calc(100dvh - 56px - 76px);
   @media (width >= 48rem) {
-    height: calc(100vh - 64px);
+    height: calc(100vh - 64px - 30px);
   }
 }
 @utility max-h-app {
   max-height: calc(100dvh - 56px - 76px);
   @media (width >= 48rem) {
-    max-height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px - 30px);
   }
 }
 @utility min-h-app {
   min-height: calc(100dvh - 56px - 76px);
   @media (width >= 48rem) {
-    min-height: calc(100vh - 64px);
+    min-height: calc(100vh - 64px - 30px);
   }
+}
+@keyframes flash-up {
+  0% { background: rgb(47 227 154 / 0.28); color: #2fe39a; }
+  100% { background: transparent; }
+}
+@keyframes flash-down {
+  0% { background: rgb(255 107 107 / 0.26); color: #ff8a8a; }
+  100% { background: transparent; }
+}
+@utility flash-up {
+  animation: flash-up 0.9s ease-out;
+  border-radius: 4px;
+}
+@utility flash-down {
+  animation: flash-down 0.9s ease-out;
+  border-radius: 4px;
 }

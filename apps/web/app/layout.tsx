@@ -4,6 +4,8 @@ import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/header';
+import { StatusBar } from '@/components/status-bar';
+import { Shortcuts } from '@/components/shortcuts';
 
 export const metadata: Metadata = {
   title: { default: 'Magura — Social spot trading', template: '%s · Magura' },
@@ -12,13 +14,16 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#07090A', width: 'device-width', initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children, drawer }: { children: React.ReactNode; drawer: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="min-h-screen font-sans">
         <Providers>
           <Header />
-          <main className="pb-[76px] md:pb-0">{children}</main>
+          <main className="pb-[76px] md:pb-[30px]">{children}</main>
+          {drawer}
+          <StatusBar />
+          <Shortcuts />
         </Providers>
       </body>
     </html>

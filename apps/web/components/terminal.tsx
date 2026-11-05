@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CHAINS, fmtPrice, fmtUsd, roomIds, type ChainId, type PairSummary, type Timeframe, type TokenRisk } from '@magura/shared';
 import { api } from '@/lib/api';
 import { ChatPanel } from './chat-panel';
-import { PriceChart } from './price-chart';
+import { PriceChart, type ChartMarker } from './price-chart';
 import { TradeTicket } from './trade-ticket';
-import { Avatar, Delta, RiskTags, Segmented, Skeleton } from './ui';
+import { InstantTrade } from './instant-trade';
+import { CoinActivity } from './coin-activity';
+import { Avatar, Delta, Flash, RiskTags, Segmented, Skeleton } from './ui';
 
 interface TokenInfo {
   chain: ChainId;
@@ -29,7 +31,7 @@ export interface LeaderRow {
   trades: number;
 }
 
-export function Terminal({ chain, address }: { chain: ChainId; address: string }) {
+export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId; address: string; inDrawer?: boolean }) {
   const [tf, setTf] = useState<Timeframe>('15m');
   const [room, setRoom] = useState<'coin' | 'world'>('coin');
   const info = useQuery({
@@ -44,6 +46,12 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
   const pool = pair?.pairAddress ?? info.data?.token?.pairAddress ?? null;
   const coinRoom = roomIds.coin(chain, address);
   const tok = info.data?.token;
+  const friends = useQuery({
+    queryKey: ['coin-friends', chain, address],
+    queryFn: () => api<{ handle: string; side: 'buy' | 'sell'; at: string }[]>(`/market/tokens/${chain}/${address}/friends`),
+    refetchInterval: 30_000,
+  });
+  const markers = useMemo<ChartMarker[]>(() => (friends.data ?? []).map((f) => ({ at: f.at, side: f.side, label: f.handle })), [friends.data]);
 
   return (
     <div className="flex min-h-app flex-wrap">
@@ -63,13 +71,13 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
               <Skeleton className="h-10 w-40" />
             ) : (
               <div className="flex flex-col">
-                <span className="num text-[26px] font-semibold tracking-tight">${fmtPrice(pair?.priceUsd ?? tok?.priceUsd)}</span>
+                <span className="num -ml-1 text-[26px] font-semibold tracking-tight"><Flash value={pair?.priceUsd ?? tok?.priceUsd}>${fmtPrice(pair?.priceUsd ?? tok?.priceUsd)}</Flash></span>
                 <span className="text-xs">
                   <Delta value={pair?.priceChange24h ?? tok?.priceChange24h} /> <span className="text-muted">24h</span>
                 </span>
               </div>
             )}
-            <dl className="num flex gap-6 text-xs [&_dt]:text-[11px]">
+            <dl className="flex gap-6 text-xs [&_dd]:font-mono [&_dt]:text-[11px]">
               {[
                 ['Mkt cap', fmtUsd(pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd)],
                 ['24h Vol', fmtUsd(pair?.volume24h ?? tok?.volumeUsd)],
@@ -96,7 +104,7 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
               <span className="max-w-sm text-[13px] text-muted">We couldn&apos;t reach the price feeds for this token. Chat and trading still work — retrying automatically.</span>
             </div>
           ) : (
-            <PriceChart chain={chain} pool={pool} tf={tf} height={340} />
+            <PriceChart chain={chain} pool={pool} tf={tf} height={340} markers={markers} />
           )}
           <div className="flex items-center gap-3">
             <span className="label">Risk</span>
@@ -107,14 +115,18 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
           </div>
         </section>
         <div className="flex flex-wrap gap-4">
-          <div className="flex-[1_1_280px]">
-            <TradeTicket chain={chain} token={address} symbol={symbol} />
+          <div className="min-w-0 flex-[999_1_420px]">
+            <CoinActivity chain={chain} address={address} />
+          </div>
+          <div className="flex flex-[1_1_280px] flex-col gap-4">
+            {symbol !== '…' && <InstantTrade target={{ chain, token: address, symbol }} />}
+            <TradeTicket chain={chain} token={address} symbol={symbol} mcUsd={pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd ?? null} />
           </div>
           <Predictions symbol={symbol} />
         </div>
       </div>
 
-      <aside aria-label="Live chat" className="flex h-[75dvh] min-w-0 flex-[1_1_340px] flex-col border-t border-line bg-bar lg:sticky lg:top-16 lg:h-auto lg:max-h-app lg:max-w-[380px] lg:border-l lg:border-t-0">
+      <aside aria-label="Live chat" className={`flex h-[75dvh] min-w-0 flex-[1_1_340px] flex-col border-t border-line bg-bar ${inDrawer ? 'lg:sticky lg:top-12 lg:h-[calc(100vh-49px)]' : 'lg:sticky lg:top-16 lg:h-auto lg:max-h-app'} lg:max-w-[380px] lg:border-l lg:border-t-0`}>
         <div role="tablist" aria-label="Chat rooms" className="flex gap-1 border-b border-line p-3">
           {[
             ['coin', `$${symbol}`],
@@ -144,7 +156,7 @@ export function Terminal({ chain, address }: { chain: ChainId; address: string }
         )}
       </aside>
 
-      <SocialRail />
+      {!inDrawer && <SocialRail />}
     </div>
   );
 }

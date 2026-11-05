@@ -1,5 +1,7 @@
 'use client';
 
+import { LivePill } from './status-bar';
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -18,12 +20,18 @@ const NAV = [
   { href: '/messages', label: 'Messages' },
   { href: '/live', label: 'Live' },
   { href: '/portfolio', label: 'Portfolio' },
+  { href: '/rewards', label: 'Rewards' },
 ];
 
 export function Header() {
   const path = usePathname();
   const { me, login, ready, mode } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setSearchOpen(true);
+    window.addEventListener('magura:search', open);
+    return () => window.removeEventListener('magura:search', open);
+  }, []);
   const notifs = useQuery({
     queryKey: ['notifications'],
     queryFn: () => api<{ id: string; readAt: string | null }[]>('/notifications'),
@@ -60,6 +68,7 @@ export function Header() {
         })}
       </nav>
       <div className="ml-auto flex items-center gap-2">
+        <LivePill />
         <button aria-label="Search" onClick={() => setSearchOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-line-2 bg-raised text-text-2 hover:bg-hover">
           <Svg d={Icon.search} size={16} />
         </button>

@@ -6,6 +6,13 @@ import { BootstrapService } from './common/bootstrap.service';
 import { InfraModule, PrismaService, RedisService } from './common/infra.module';
 import { MarketController } from './market/market.controller';
 import { HuntService } from './market/hunt.service';
+import { CoinActivityService } from './market/coin-activity.service';
+import { SignerService } from './trading/signer.service';
+import { OrdersService } from './trading/orders.service';
+import { OrdersController } from './trading/orders.controller';
+import { ReferralsService } from './social/referrals.service';
+import { ReferralsController } from './social/referrals.controller';
+import { TrackedController } from './market/tracked.controller';
 import { TrenchesService } from './market/trenches.service';
 import { ModerationModule } from './moderation/moderation.service';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -46,7 +53,10 @@ class HealthController {
     GroupsController,
     DmsController,
     RtcController,
+    TrackedController,
+    OrdersController,
+    ReferralsController,
   ],
-  providers: [BootstrapService, HuntService, TrenchesService, TradingService, CopyService],
+  providers: [BootstrapService, HuntService, CoinActivityService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, ReferralsService],
 })
 export class AppModule {}

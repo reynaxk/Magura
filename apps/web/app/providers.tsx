@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { SessionProvider } from '@/lib/session';
 import { SocketProvider } from '@/lib/socket';
 import { Toaster } from '@/components/toaster';
+import { RefAttach } from '@/components/ref-attach';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [qc] = useState(
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <SocketProvider>
           {children}
           <Toaster />
+          <RefAttach />
         </SocketProvider>
       </SessionProvider>
     </QueryClientProvider>

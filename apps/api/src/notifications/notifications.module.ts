@@ -8,7 +8,7 @@ import { PrismaService } from '../common/infra.module';
 import { parse } from '../common/zod';
 import { RealtimeService } from '../realtime/realtime.service';
 
-export type NotifyKind = 'copy' | 'call' | 'dm' | 'live' | 'price' | 'group';
+export type NotifyKind = 'copy' | 'call' | 'dm' | 'live' | 'price' | 'group' | 'order';
 
 const pushEnabled = !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 if (pushEnabled) webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!);

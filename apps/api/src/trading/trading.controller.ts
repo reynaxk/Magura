@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { CHAINS } from '@magura/shared';
+import { tokenBalance } from '@magura/chains';
 import type { User } from '@magura/db';
 import { CurrentUser, Public } from '../auth/auth.guard';
 import { PrismaService } from '../common/infra.module';
@@ -19,7 +21,7 @@ export class TradingController {
   // ───── swaps (spot only) ─────
 
   @Post('swap/quote')
-  quote(@Body() body: unknown) {
+  quote(@Body() body: unknown, @CurrentUser() user: User) {
     const b = parse(
       z.object({
         chain: zChain,
@@ -31,7 +33,7 @@ export class TradingController {
       }),
       body,
     );
-    return this.trading.quote(b);
+    return this.trading.quote({ ...b, userId: user.id });
   }
 
   @Post('swap/build')
@@ -54,7 +56,7 @@ export class TradingController {
         pct: z.number().min(0).max(100).optional(),
         portfolioUsd: z.number().optional(),
         shareToRoom: z.boolean().optional(),
-        source: z.enum(['manual', 'quickbuy', 'call']).optional(),
+        source: z.enum(['manual', 'quickbuy', 'call', 'order']).optional(),
         copyExecutionId: z.string().optional(),
       }),
       body,
@@ -65,6 +67,21 @@ export class TradingController {
   @Get('me/trades')
   myTrades(@CurrentUser() user: User) {
     return this.prisma.db.trade.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 100 });
+  }
+
+  /** On-chain balance of one token in the caller's own wallet — powers "sell 25%" buttons. */
+  @Get('me/balance')
+  async balance(@Query() q: Record<string, string>, @CurrentUser() user: User) {
+    const p = parse(z.object({ chain: zChain, token: z.string().min(20).max(80) }), q);
+    const kind = CHAINS[p.chain].kind;
+    const w = await this.prisma.db.wallet.findFirst({ where: { userId: user.id, chainKind: kind }, orderBy: { isPrimary: 'desc' } });
+    if (!w) return { amount: '0', decimals: 0, wallet: null };
+    try {
+      const b = await tokenBalance(p.chain, w.address, p.token);
+      return { amount: b.amount.toString(), decimals: b.decimals, wallet: w.address };
+    } catch {
+      return { amount: null, decimals: null, wallet: w.address };
+    }
   }
 
   @Get('me/portfolio')

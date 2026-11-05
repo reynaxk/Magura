@@ -85,7 +85,7 @@ export default function PortfolioPage() {
   const deployed = p?.positions.reduce((s, x) => s + x.costUsd, 0) ?? 0;
   const bySource = new Map<string, number>();
   p?.positions.forEach((x) => bySource.set(x.source, (bySource.get(x.source) ?? 0) + x.costUsd));
-  const palette = ['#E9B07F', '#8FC6E6', '#9D8CFF', '#A2D9BD', '#E3CD8A', '#4A5162'];
+  const palette = ['#2FE39A', '#1FA673', '#8A93A6', '#5B6375', '#C9CFDA', '#3A404D'];
 
   return (
     <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 p-4 md:p-6">
@@ -111,18 +111,26 @@ export default function PortfolioPage() {
         </section>
       )}
 
+      <Link href="/rewards" className="panel flex items-center gap-3 p-4 hover:bg-hover md:hidden">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-lime-line bg-lime-dim text-lime">%</span>
+        <span className="flex flex-col">
+          <span className="text-sm font-semibold">Invite friends, earn 25% of their fees</span>
+          <span className="text-xs text-muted">They pay 10% less. Open Rewards</span>
+        </span>
+      </Link>
+
       <div className="flex flex-wrap gap-5">
         <section className="panel flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-6">
           <span className="text-[13px] text-muted">Deployed in open positions</span>
           <span className="num text-[40px] font-semibold tracking-tight">{fmtUsd(deployed, { compact: false })}</span>
           <div className="num flex flex-wrap gap-6 text-[13px]">
             <span>
-              Realized <span className={(p?.realizedUsd ?? 0) >= 0 ? 'text-lime' : 'text-down'}>{fmtUsd(p?.realizedUsd ?? 0, { compact: false })}</span>
+              <span className="font-sans text-muted">Realized</span> <span className={(p?.realizedUsd ?? 0) >= 0 ? 'text-lime' : 'text-down'}>{fmtUsd(p?.realizedUsd ?? 0, { compact: false })}</span>
             </span>
             <span>
-              ROI <Delta value={p?.roiPct} />
+              <span className="font-sans text-muted">ROI</span> <Delta value={p?.roiPct} />
             </span>
-            <span>Win rate {p?.winRatePct != null ? `${p.winRatePct.toFixed(0)}%` : '—'}</span>
+            <span><span className="font-sans text-muted">Win rate</span> {p?.winRatePct != null ? `${p.winRatePct.toFixed(0)}%` : '—'}</span>
           </div>
         </section>
         <section className="panel flex flex-[1_1_300px] flex-col gap-4 p-6">
@@ -203,15 +211,15 @@ export default function PortfolioPage() {
               </div>
               <div className="num grid grid-cols-3 gap-1.5 text-[11px]">
                 <span className="flex flex-col">
-                  <span className="text-muted">Budget</span>
+                  <span className="font-sans text-muted">Budget</span>
                   {fmtUsd(Number(s.budgetUsd))}
                 </span>
                 <span className="flex flex-col">
-                  <span className="text-muted">Copies</span>
+                  <span className="font-sans text-muted">Copies</span>
                   {s._count.executions}
                 </span>
                 <span className="flex flex-col">
-                  <span className="text-muted">Max/buy</span>
+                  <span className="font-sans text-muted">Max/buy</span>
                   {fmtUsd(Number(s.maxPerBuyUsd))}
                 </span>
               </div>

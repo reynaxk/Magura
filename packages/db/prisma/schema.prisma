@@ -52,6 +52,12 @@ model User {
   calls         Call[]             @relation("callCreator")
   reactions     Reaction[]
   reports       Report[]           @relation("reporter")
+  trackedWallets TrackedWallet[]
+  orderRules     OrderRule[]
+  invitedBy      Referral?      @relation("invitee")
+  invites        Referral[]     @relation("inviter")
+  rewards        RewardEntry[]
+  rewardClaims   RewardClaim[]
 }
 
 model Wallet {
@@ -89,6 +95,9 @@ model UserSettings {
   // trading
   quickBuyAmounts Json @default("{\"solana\":\"0.5\",\"base\":\"0.01\",\"bsc\":\"0.05\",\"ethereum\":\"0.01\"}")
   slippageBps     Int  @default(100)
+  /// Instant-trade presets P1–P3: [{ name, slippageBps, buy: { <chain>: string[4] }, sell: number[4] }]
+  tradePresets    Json?
+  activePreset    Int  @default(0)
   // copy defaults
   copyBudgetUsd       Decimal @default(0) @db.Decimal(18, 2)
   copyMaxPerBuyUsd    Decimal @default(250) @db.Decimal(18, 2)
@@ -99,6 +108,21 @@ model UserSettings {
   copyConfirmAboveUsd Decimal @default(500) @db.Decimal(18, 2)
   // notifications: { event: { push: bool, app: bool } }
   notifications Json @default("{\"copy\":{\"push\":true,\"app\":true},\"call\":{\"push\":true,\"app\":true},\"dm\":{\"push\":true,\"app\":true},\"live\":{\"push\":false,\"app\":true},\"price\":{\"push\":true,\"app\":false},\"group\":{\"push\":false,\"app\":true}}")
+}
+
+/// A wallet a user watches (any wallet on-chain, not just Magura users).
+model TrackedWallet {
+  id        String   @id @default(cuid())
+  userId    String
+  chainKind String // svm | evm
+  address   String
+  label     String
+  alerts    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chainKind, address])
+  @@index([chainKind, address])
 }
 
 model Follow {
@@ -182,6 +206,80 @@ model Trade {
 
   @@index([userId, createdAt])
   @@index([chain, tokenAddress])
+}
+
+// ───────────────────────── Referrals ─────────────────────────
+
+/// Who invited whom. Invitees pay 10% less in fees; inviters earn 25% of what invitees pay.
+model Referral {
+  inviteeId String   @id
+  inviterId String
+  createdAt DateTime @default(now())
+  invitee   User     @relation("invitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+  inviter   User     @relation("inviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId])
+}
+
+/// One reward line per fee-paying trade by an invitee.
+model RewardEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  inviteeId String
+  tradeId   String   @unique
+  chain     Chain
+  feeUsd    Decimal  @db.Decimal(18, 4)
+  rewardUsd Decimal  @db.Decimal(18, 4)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// A request to pay out earned rewards.
+model RewardClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  amountUsd Decimal  @db.Decimal(18, 2)
+  wallet    String
+  chain     Chain
+  status    String   @default("requested") // requested | paid | rejected
+  txHash    String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Automatic orders: take profit, stop loss, trailing stop, limit buy.
+model OrderRule {
+  id           String    @id @default(cuid())
+  userId       String
+  chain        Chain
+  tokenAddress String
+  tokenSymbol  String
+  kind         String // tp | sl | trail | limit_buy
+  /// tp: +% above entry · sl: −% below entry (stored negative) · trail: % drop from the peak
+  triggerPct   Float?
+  /// limit_buy: buy when market cap is at or below this
+  triggerMcUsd Float?
+  /// tp / sl / trail: % of the position to sell when it fires
+  sellPct      Int?
+  /// limit_buy: native amount to spend
+  buyAmount    String?
+  entryPrice   Float?
+  peakPrice    Float?
+  slippageBps  Int       @default(1500)
+  status       String    @default("active") // active | executing | awaiting_confirm | done | failed | cancelled
+  error        String?
+  txHash       String?
+  triggeredAt  DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, chain])
+  @@index([userId, status])
 }
 
 // ───────────────────────── Copy trading (spot) ─────────────────────────

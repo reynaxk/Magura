@@ -16,6 +16,7 @@ export interface ServerToClientEvents {
   'trenches:token': (t: TrenchToken) => void;
   'trenches:update': (t: Partial<TrenchToken> & { chain: string; address: string }) => void;
   'copy:executed': (p: { subscriptionId: string; side: 'buy' | 'sell'; symbol: string; amountUsd: number; txHash: string | null }) => void;
+  'order:fired': (p: { orderId: string; kind: string; side: 'buy' | 'sell'; symbol: string; chain: string; token: string; needsConfirm: boolean; txHash: string | null }) => void;
   'copy:confirm': (p: { executionId: string; leader: string; side: 'buy' | 'sell'; symbol: string; amountUsd: number }) => void;
   'call:ring': (p: { callId: string; from: { id: string; handle: string }; video: boolean }) => void;
   'call:ended': (p: { callId: string }) => void;

@@ -118,8 +118,8 @@ export default function CopyPage() {
 function Stat({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] text-muted">{k}</span>
-      <span className="text-base">{v}</span>
+      <span className="font-sans text-[11px] text-muted">{k}</span>
+      <span className="num text-base">{v}</span>
     </div>
   );
 }

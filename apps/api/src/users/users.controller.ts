@@ -59,6 +59,17 @@ export class UsersController {
           hideBalanceOnStream: z.boolean(),
           quickBuyAmounts: z.record(z.string(), z.string().regex(/^\d+(\.\d+)?$/)),
           slippageBps: z.number().int().min(10).max(5000),
+          tradePresets: z
+            .array(
+              z.object({
+                name: z.string().min(1).max(12),
+                slippageBps: z.number().int().min(10).max(5000),
+                buy: z.record(z.string(), z.array(z.string().regex(/^\d+(\.\d+)?$/)).length(4)),
+                sell: z.array(z.number().int().min(1).max(100)).length(4),
+              }),
+            )
+            .length(3),
+          activePreset: z.number().int().min(0).max(2),
           copyBudgetUsd: z.number().min(0),
           copyMaxPerBuyUsd: z.number().min(1),
           copyStopLossPct: z.number().int().min(1).max(100),

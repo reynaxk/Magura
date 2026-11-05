@@ -1,5 +1,4 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { encodeFunctionData, erc20Abi } from 'viem';
 import type { CopyExecution, CopySubscription, Trade, User } from '@magura/db';
 import { CHAINS, type ChainId } from '@magura/shared';
 import { AuthService } from '../auth/auth.service';
@@ -8,16 +7,11 @@ import { NotificationsService } from '../notifications/notifications.module';
 import { RealtimeService } from '../realtime/realtime.service';
 import { computePnl } from './pnl';
 import { TradingService } from './trading.service';
+import { SignerService } from './signer.service';
 
 /** Tokens older/bigger than this are "established"; everything else counts as a memecoin for the filter. */
 const ESTABLISHED_MC_USD = 10_000_000;
 const DEFAULT_PROPORTION = 0.05; // when the leader didn't report a portfolio value
-const CAIP2: Record<ChainId, string> = {
-  solana: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  base: 'eip155:8453',
-  bsc: 'eip155:56',
-  ethereum: 'eip155:1',
-};
 
 @Injectable()
 export class CopyService implements OnModuleInit {
@@ -30,6 +24,7 @@ export class CopyService implements OnModuleInit {
     private readonly notify: NotificationsService,
     private readonly rt: RealtimeService,
     private readonly auth: AuthService,
+    private readonly signer: SignerService,
   ) {}
 
   onModuleInit() {
@@ -185,37 +180,9 @@ export class CopyService implements OnModuleInit {
     await this.prisma.db.copyExecution.update({ where: { id: exec.id }, data: { status: 'executing' } });
     try {
       const amount = await this.amountFor(exec, sub.copierId, chain, pct);
-      const q = await this.trading.quote({ chain, side: exec.side as 'buy' | 'sell', token: exec.tokenAddress, amount, slippageBps: 300, wallet: wallet.address });
+      const q = await this.trading.quote({ chain, side: exec.side as 'buy' | 'sell', token: exec.tokenAddress, amount, slippageBps: 300, wallet: wallet.address, userId: sub.copierId });
       const tx = await this.trading.build(q.quoteId);
-      const privy = this.auth.privy!;
-      let hash: string;
-      if (tx.solanaTxBase64) {
-        const { VersionedTransaction } = await import('@solana/web3.js');
-        const res = await privy.walletApi.solana.signAndSendTransaction({
-          walletId: wallet.privyWalletId!,
-          caip2: CAIP2.solana as any,
-          transaction: VersionedTransaction.deserialize(Buffer.from(tx.solanaTxBase64, 'base64')),
-        });
-        hash = res.hash;
-      } else {
-        if (tx.approval) {
-          await privy.walletApi.ethereum.sendTransaction({
-            walletId: wallet.privyWalletId!,
-            caip2: CAIP2[chain] as any,
-            transaction: {
-              to: tx.approval.token as `0x${string}`,
-              data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [tx.approval.spender as `0x${string}`, BigInt(tx.approval.amount)] }),
-              chainId: CHAINS[chain].evmChainId!,
-            },
-          });
-        }
-        const res = await privy.walletApi.ethereum.sendTransaction({
-          walletId: wallet.privyWalletId!,
-          caip2: CAIP2[chain] as any,
-          transaction: { to: tx.evmTx!.to as `0x${string}`, data: tx.evmTx!.data as `0x${string}`, value: BigInt(tx.evmTx!.value) as any, chainId: CHAINS[chain].evmChainId! },
-        });
-        hash = res.hash;
-      }
+      const hash = await this.signer.send(chain, wallet.privyWalletId!, tx);
       const copier = await this.prisma.db.user.findUniqueOrThrow({ where: { id: sub.copierId } });
       await this.trading.record(copier, {
         quoteId: q.quoteId,

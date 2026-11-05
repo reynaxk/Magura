@@ -82,3 +82,21 @@ export const GAS_RESERVE: Record<ChainId, { human: string; base: string }> = {
   bsc: { human: '0.002', base: '2000000000000000' }, // 0.002 BNB
   ethereum: { human: '0.004', base: '4000000000000000' }, // 0.004 ETH
 };
+
+/** Instant-trade preset (P1–P3). Buy amounts are in the chain's native coin, sells are % of the position. */
+export interface TradePreset {
+  name: string;
+  slippageBps: number;
+  buy: Record<string, string[]>;
+  sell: number[];
+}
+
+export const DEFAULT_PRESETS: TradePreset[] = [
+  { name: 'P1', slippageBps: 1000, buy: { solana: ['0.1', '0.25', '0.5', '1'], base: ['0.005', '0.01', '0.025', '0.05'], bsc: ['0.02', '0.05', '0.1', '0.25'], ethereum: ['0.005', '0.01', '0.025', '0.05'] }, sell: [10, 25, 50, 100] },
+  { name: 'P2', slippageBps: 2000, buy: { solana: ['0.5', '1', '2', '5'], base: ['0.02', '0.05', '0.1', '0.25'], bsc: ['0.1', '0.25', '0.5', '1'], ethereum: ['0.02', '0.05', '0.1', '0.25'] }, sell: [25, 50, 75, 100] },
+  { name: 'P3', slippageBps: 300, buy: { solana: ['0.05', '0.1', '0.2', '0.3'], base: ['0.002', '0.004', '0.006', '0.01'], bsc: ['0.01', '0.02', '0.03', '0.05'], ethereum: ['0.002', '0.004', '0.006', '0.01'] }, sell: [10, 20, 50, 100] },
+];
+
+/** Referrals: invitees pay 10% less; inviters earn 25% of the (discounted) fee their invitees pay. */
+export const REFERRAL = { inviteeDiscount: 0.1, inviterShare: 0.25, minClaimUsd: 10, attachWindowDays: 7 } as const;
+export const withReferralDiscount = (bps: number) => Math.round(bps * (1 - REFERRAL.inviteeDiscount));

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { TokenRisk } from '@magura/shared';
 
 const AVATAR_COLORS = ['#E9B07F', '#8FC6E6', '#E7A0B8', '#A2D9BD', '#E3CD8A', '#9D8CFF', '#2FE39A'];
@@ -32,8 +32,8 @@ export function Avatar({
   return (
     <span
       aria-hidden="true"
-      style={{ ...style, background: colorFor(name), fontSize: Math.max(9, size * 0.36) }}
-      className="inline-flex shrink-0 items-center justify-center font-semibold text-bar"
+      style={{ ...style, fontSize: Math.max(9, size * 0.36) }}
+      className="inline-flex shrink-0 items-center justify-center bg-line-2 font-semibold text-text-2"
     >
       {name.replace(/^[@$]/, '').slice(0, 2).toUpperCase()}
     </span>
@@ -207,10 +207,29 @@ export function ChatBadge({ count }: { count: number }) {
   return (
     <span
       title={`${count} messages in the last hour`}
-      className={`num inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] ${hot ? 'border-violet-line bg-violet-dim text-violet-2' : 'border-line text-faint'}`}
+      className={`num inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] ${hot ? 'border-lime-line text-lime' : 'border-line text-faint'}`}
     >
-      <Svg d={Icon.chat} size={11} color={hot ? '#B9AEFF' : 'currentColor'} />
+      <Svg d={Icon.chat} size={11} color="currentColor" />
       {count}
+    </span>
+  );
+}
+
+/** A number that briefly flashes green or red when it moves. */
+export function Flash({ value, children, className = '' }: { value: number | null | undefined; children: ReactNode; className?: string }) {
+  const prev = useRef(value);
+  const [dir, setDir] = useState<'up' | 'down' | null>(null);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (value != null && prev.current != null && value !== prev.current) {
+      setDir(value > prev.current ? 'up' : 'down');
+      setN((x) => x + 1);
+    }
+    prev.current = value;
+  }, [value]);
+  return (
+    <span key={n} className={`px-1 ${dir === 'up' ? 'flash-up' : dir === 'down' ? 'flash-down' : ''} ${className}`}>
+      {children}
     </span>
   );
 }

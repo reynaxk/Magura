@@ -36,12 +36,21 @@ export function Toaster() {
     push({ title: `Confirm copy of @${p.leader}`, body: `${p.side} ${p.symbol} · ~$${p.amountUsd.toFixed(0)}`, href: '/portfolio', tone: 'lime' });
     qc.invalidateQueries({ queryKey: ['copy-pending'] });
   });
+  useSocketEvent('order:fired', (p) => {
+    const name = { tp: 'Take profit', sl: 'Stop loss', trail: 'Trailing stop', limit_buy: 'Limit buy' }[p.kind] ?? 'Order';
+    push(
+      p.needsConfirm
+        ? { title: `${name} hit on ${p.symbol}`, body: 'Tap to confirm the trade', href: `/t/${p.chain}/${p.token}`, tone: 'lime' }
+        : { title: `${name} filled on ${p.symbol}`, body: p.side === 'sell' ? 'Sold — confirming on-chain' : 'Bought — confirming on-chain', tone: 'lime' },
+    );
+    qc.invalidateQueries({ queryKey: ['orders'] });
+  });
   useSocketEvent('copy:executed', (p) => push({ title: 'Copied', body: `${p.side} ${p.symbol} · $${p.amountUsd.toFixed(0)}`, tone: 'lime' }));
   useSocketEvent('call:ring', (p) => push({ title: `@${p.from.handle} is calling`, body: p.video ? 'Video call' : 'Voice call', href: `/call/${p.callId}`, tone: 'violet' }));
   useSocketEvent('stream:live', (p) => push({ title: `@${p.hostHandle} is live`, body: p.title, href: `/live/${p.streamId}`, tone: 'violet' }));
 
   return (
-    <div aria-live="polite" className="fixed inset-x-3 bottom-24 z-50 flex flex-col gap-2 md:inset-x-auto md:bottom-6 md:right-6 md:w-[340px]">
+    <div aria-live="polite" className="fixed inset-x-3 bottom-24 z-50 flex flex-col gap-2 md:inset-x-auto md:bottom-auto md:right-6 md:top-20 md:w-[340px]">
       {items.map((t) => {
         const border = t.tone === 'lime' ? 'border-lime-line' : t.tone === 'violet' ? 'border-violet-line' : 'border-line-3';
         const inner = (

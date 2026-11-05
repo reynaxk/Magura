@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Social spot trading terminal. Trade together, copy the best, live in every coin.',
 };
 
-export const viewport: Viewport = { themeColor: '#08090C', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#07090A', width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

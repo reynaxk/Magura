@@ -14,9 +14,9 @@
   --color-text-2: #c9cfda;
   --color-muted: #8a93a6;
   --color-faint: #7a8397;
-  --color-lime: #c8f05a;
-  --color-lime-dim: #141a0c;
-  --color-lime-line: #3e4a1e;
+  --color-lime: #2FE39A;
+  --color-lime-dim: #0B1F17;
+  --color-lime-line: #1D4A37;
   --color-violet: #9d8cff;
   --color-violet-2: #b9aeff;
   --color-violet-dim: #17152a;
@@ -47,7 +47,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 ::selection {
-  background: rgb(200 240 90 / 0.25);
+  background: rgb(47 227 154 / 0.25);
 }
 :focus-visible {
   outline: 2px solid var(--color-lime);

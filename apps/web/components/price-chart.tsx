@@ -31,10 +31,10 @@ export function PriceChart({ chain, pool, tf, height = 320 }: { chain: ChainId; 
       crosshair: { mode: 1 },
     });
     candleRef.current = chart.addCandlestickSeries({
-      upColor: '#C8F05A',
+      upColor: '#2FE39A',
       downColor: '#FF6B6B',
       borderVisible: false,
-      wickUpColor: '#C8F05A',
+      wickUpColor: '#2FE39A',
       wickDownColor: '#FF6B6B',
       priceFormat: { type: 'price', precision: 6, minMove: 0.000001 },
     });
@@ -48,7 +48,7 @@ export function PriceChart({ chain, pool, tf, height = 320 }: { chain: ChainId; 
     const data = candles.data;
     if (!data || !candleRef.current || !volRef.current) return;
     candleRef.current.setData(data.map((c) => ({ time: c.t as UTCTimestamp, open: c.o, high: c.h, low: c.l, close: c.c })));
-    volRef.current.setData(data.map((c) => ({ time: c.t as UTCTimestamp, value: c.v, color: c.c >= c.o ? 'rgba(200,240,90,0.22)' : 'rgba(255,107,107,0.22)' })));
+    volRef.current.setData(data.map((c) => ({ time: c.t as UTCTimestamp, value: c.v, color: c.c >= c.o ? 'rgba(47,227,154,0.22)' : 'rgba(255,107,107,0.22)' })));
   }, [candles.data]);
 
   return (

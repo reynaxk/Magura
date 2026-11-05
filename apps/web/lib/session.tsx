@@ -189,7 +189,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        appearance: { theme: 'dark', accentColor: '#C8F05A', walletChainType: 'ethereum-and-solana', landingHeader: 'Enter Magura' },
+        appearance: { theme: 'dark', accentColor: '#2FE39A', walletChainType: 'ethereum-and-solana', landingHeader: 'Enter Magura' },
         loginMethods: ['wallet', 'email', 'google', 'twitter'],
         embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' }, solana: { createOnLogin: 'users-without-wallets' } },
       }}

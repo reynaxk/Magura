@@ -14,7 +14,7 @@ import { Avatar, Icon, RiskTags, Svg } from '@/components/ui';
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
   { id: 'new', title: 'New Pairs', hint: 'just launched', accent: '#8FC6E6' },
   { id: 'almost', title: 'Almost Survived', hint: 'close to bonding', accent: '#FFC66B' },
-  { id: 'survived', title: 'Survived', hint: 'migrated to DEX', accent: '#C8F05A' },
+  { id: 'survived', title: 'Survived', hint: 'migrated to DEX', accent: '#2FE39A' },
 ];
 
 export default function TrenchesPage() {
@@ -115,7 +115,7 @@ export default function TrenchesPage() {
           })}
         </div>
         <span className="ml-auto flex items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted">
-          <Svg d={Icon.bolt} size={14} color="#C8F05A" /> Quick buy uses your amounts from{' '}
+          <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy uses your amounts from{' '}
           <Link href="/settings" className="text-lime">
             Settings
           </Link>

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { LeaderRow } from '@/components/terminal';
+import { Wordmark } from '@/components/logo';
 import { Avatar, Toggle } from '@/components/ui';
 
 const STEPS = [
@@ -42,7 +43,7 @@ export default function OnboardingPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="panel flex w-full max-w-[1120px] flex-wrap overflow-hidden rounded-[28px]">
         <aside className="flex max-w-[360px] flex-[1_1_300px] flex-col gap-8 border-r border-line bg-bar p-8">
-          <span className="text-[19px] font-semibold tracking-[0.1em]">MAGURA</span>
+          <Wordmark />
           <div className="flex flex-col gap-2">
             <span className="num text-xs tracking-[0.2em] text-lime">FIND.TRADE.REPEAT</span>
             <span className="text-[28px] font-semibold leading-tight tracking-tight">

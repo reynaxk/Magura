@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import type { TokenRisk } from '@magura/shared';
 
-const AVATAR_COLORS = ['#E9B07F', '#8FC6E6', '#E7A0B8', '#A2D9BD', '#E3CD8A', '#9D8CFF', '#C8F05A'];
+const AVATAR_COLORS = ['#E9B07F', '#8FC6E6', '#E7A0B8', '#A2D9BD', '#E3CD8A', '#9D8CFF', '#2FE39A'];
 
 export function colorFor(seed: string): string {
   let h = 0;
@@ -97,7 +97,7 @@ export function Delta({ value, digits = 1 }: { value: number | null | undefined;
   );
 }
 
-export function Spark({ points, width = 64, height = 26, color = '#C8F05A' }: { points: number[]; width?: number; height?: number; color?: string }) {
+export function Spark({ points, width = 64, height = 26, color = '#2FE39A' }: { points: number[]; width?: number; height?: number; color?: string }) {
   if (points.length < 2) return <svg width={width} height={height} aria-hidden="true" />;
   const min = Math.min(...points);
   const max = Math.max(...points);
@@ -147,7 +147,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-raised ${className}`} />;
 }
 
-export function LiveDot({ color = '#C8F05A' }: { color?: string }) {
+export function LiveDot({ color = '#2FE39A' }: { color?: string }) {
   return <span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} aria-hidden="true" />;
 }
 

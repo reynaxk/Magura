@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtUsd, type PairSummary } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { Wordmark } from './logo';
 import { Avatar, Icon, Svg } from './ui';
 
 const NAV = [
@@ -34,14 +35,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-5 border-b border-line bg-bar/95 px-6 py-3 backdrop-blur">
-      <Link href="/" className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-lime">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#08090C" strokeWidth="2.4" aria-hidden="true">
-            <circle cx="12" cy="12" r="4" />
-            <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(-30 12 12)" />
-          </svg>
-        </span>
-        <span className="text-[17px] font-semibold tracking-[0.1em]">MAGURA</span>
+      <Link href="/" aria-label="Magura home">
+        <Wordmark />
       </Link>
       <nav aria-label="Sections" className="flex flex-wrap gap-0.5">
         {NAV.map((n) => {

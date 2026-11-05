@@ -71,3 +71,14 @@ export function nextTier(chain: ChainId, usd: number): { atUsd: number; bps: num
 export function bpsToPct(bps: number): string {
   return `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2).replace(/0$/, '')}%`;
 }
+
+/**
+ * Native coin kept back for network gas. Buys can't spend into it, and copy
+ * trades check it before executing. Users pay their own gas — Magura never sponsors it.
+ */
+export const GAS_RESERVE: Record<ChainId, { human: string; base: string }> = {
+  solana: { human: '0.01', base: '10000000' }, // 0.01 SOL
+  base: { human: '0.0003', base: '300000000000000' }, // 0.0003 ETH
+  bsc: { human: '0.002', base: '2000000000000000' }, // 0.002 BNB
+  ethereum: { human: '0.004', base: '4000000000000000' }, // 0.004 ETH
+};

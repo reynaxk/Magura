@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { buildSwapTx, dexscreener, evmClient, getQuote, solanaRpc } from '@magura/chains';
+import { buildSwapTx, dexscreener, evmClient, getQuote, nativeBalance, solanaRpc } from '@magura/chains';
 import type { Chain, Trade, User } from '@magura/db';
 import {
   CHAINS,
   EVM_NATIVE,
+  GAS_RESERVE,
   MIN_TRADE_USD,
   TradeTooSmallError,
   feeBpsFor,
@@ -102,9 +103,19 @@ export class TradingService {
 
     let quote: SwapQuote;
     let amountUsd: number;
+    const balance = await nativeBalance(q.chain, q.wallet).catch(() => null); // RPC down → don't block, the chain will
+    const reserve = BigInt(GAS_RESERVE[q.chain].base);
     if (q.side === 'buy') {
       const gross = BigInt(toBaseUnits(q.amount, dec));
       if (gross === 0n) throw new BadRequestException('amount_zero');
+      if (balance != null && gross + reserve > balance) {
+        const max = balance > reserve ? balance - reserve : 0n;
+        throw new BadRequestException({
+          error: 'low_gas',
+          message: `Keep ${GAS_RESERVE[q.chain].human} ${c.nativeSymbol} for gas. Max buy: ${(Number(max) / 10 ** dec).toFixed(svm ? 4 : 6)} ${c.nativeSymbol}`,
+          maxBuy: (Number(max) / 10 ** dec).toString(),
+        });
+      }
       amountUsd = toUsd(gross);
       const bps = receiver ? bpsFor(amountUsd) : (bpsFor(amountUsd), 0);
       const req = { chain: q.chain, inputToken: native, outputToken: q.token, slippageBps: q.slippageBps, userAddress: q.wallet };
@@ -119,6 +130,9 @@ export class TradingService {
       }
     } else {
       if (!/^\d+$/.test(q.amount) || q.amount === '0') throw new BadRequestException('amount_zero');
+      if (balance != null && balance < reserve / 2n) {
+        throw new BadRequestException({ error: 'low_gas', message: `Add some ${c.nativeSymbol} to pay gas for this sell` });
+      }
       const req = { chain: q.chain, inputToken: q.token, outputToken: native, amount: q.amount, slippageBps: q.slippageBps, userAddress: q.wallet };
       const pre = await getQuote(req);
       amountUsd = toUsd(pre.outAmount);

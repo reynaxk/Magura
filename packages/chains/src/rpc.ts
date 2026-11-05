@@ -54,3 +54,12 @@ export async function solanaRpc<T>(method: string, params: unknown[]): Promise<T
   }
   throw lastErr;
 }
+
+/** Native balance in base units (lamports / wei). */
+export async function nativeBalance(chain: ChainId, address: string): Promise<bigint> {
+  if (chain === 'solana') {
+    const r = await solanaRpc<{ value: number }>('getBalance', [address, { commitment: 'confirmed' }]);
+    return BigInt(r.value);
+  }
+  return evmClient(chain).getBalance({ address: address as `0x${string}` });
+}

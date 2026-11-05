@@ -80,7 +80,8 @@ export default function TrenchesPage() {
       await api('/trades', { body: { quoteId: q.quoteId, chain: t.chain, side: 'buy', tokenAddress: t.address, tokenSymbol: t.symbol, txHash, shareToRoom: true, source: 'quickbuy' } });
       toast({ title: `Bought ${t.symbol}`, body: `${amount} ${CHAINS[t.chain].nativeSymbol} · confirming`, tone: 'lime' });
     } catch (e) {
-      toast({ title: 'Quick buy failed', body: (e as Error).message });
+      const msg = (e as Error).message;
+      toast({ title: /gas/i.test(msg) ? 'Not enough for gas' : msg.startsWith('min_trade') ? 'Trade too small' : 'Quick buy failed', body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $2' : msg });
     } finally {
       setBuying(null);
     }

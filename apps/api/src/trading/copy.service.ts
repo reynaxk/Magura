@@ -230,8 +230,20 @@ export class CopyService implements OnModuleInit {
       await this.prisma.db.copyExecution.update({ where: { id: exec.id }, data: { status: 'done' } });
       this.rt.toUser(sub.copierId, 'copy:executed', { subscriptionId: sub.id, side: exec.side as 'buy' | 'sell', symbol: exec.tokenSymbol, amountUsd: Number(exec.amountUsd), txHash: hash });
     } catch (e) {
-      await this.prisma.db.copyExecution.update({ where: { id: exec.id }, data: { status: 'failed', error: (e as Error).message.slice(0, 500) } });
-      await this.notify.notify(sub.copierId, 'copy', 'Copy failed', `${exec.side} ${exec.tokenSymbol}: ${(e as Error).message.slice(0, 80)}`, '/portfolio');
+      const body = (e as { getResponse?: () => { error?: string; message?: string } }).getResponse?.();
+      const lowGas = body?.error === 'low_gas';
+      const reason = lowGas ? body!.message! : (e as Error).message;
+      await this.prisma.db.copyExecution.update({
+        where: { id: exec.id },
+        data: { status: lowGas ? 'skipped' : 'failed', skipReason: lowGas ? 'low_gas' : null, error: reason.slice(0, 500) },
+      });
+      await this.notify.notify(
+        sub.copierId,
+        'copy',
+        lowGas ? 'Copy skipped: low on gas' : 'Copy failed',
+        `${exec.side} ${exec.tokenSymbol} from @${(await this.prisma.db.user.findUnique({ where: { id: sub.leaderId }, select: { handle: true } }))?.handle ?? 'leader'}: ${reason.slice(0, 100)}`,
+        '/portfolio',
+      );
     }
   }
 

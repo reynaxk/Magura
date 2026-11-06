@@ -64,8 +64,8 @@ export default function WalletProfile({ params }: { params: Promise<{ chain: str
           <button onClick={track} className="btn-ghost h-10 text-sm">
             Track
           </button>
-          <Link href={`/smart`} className="btn-lime h-10 text-sm">
-            Smart money
+          <Link href={`/copy?wallet=${address}`} className="btn-lime h-10 text-sm">
+            Copy this wallet
           </Link>
         </span>
       </header>

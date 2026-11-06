@@ -4,8 +4,8 @@ type RuleView = Pick<OrderRule, 'kind' | 'triggerPct' | 'triggerMcUsd' | 'entryP
   Partial<Pick<OrderRule, 'armPct' | 'armed' | 'nextAt' | 'minMcUsd' | 'slicesDone' | 'slicesTotal'>>;
 
 /** Kinds fired by events (dev sold, coin migrated) instead of price. */
-export const EVENT_KINDS = ['dev_sell', 'dev_sell_buy', 'migrate_buy', 'migrate_sell', 'dev_snipe'] as const;
-export const BUY_KINDS = ['limit_buy', 'dca', 'dev_sell_buy', 'migrate_buy', 'dev_snipe'] as const;
+export const EVENT_KINDS = ['dev_sell', 'dev_sell_buy', 'migrate_buy', 'migrate_sell', 'dev_snipe', 'copy_buy', 'copy_sell'] as const;
+export const BUY_KINDS = ['limit_buy', 'dca', 'dev_sell_buy', 'migrate_buy', 'dev_snipe', 'copy_buy'] as const;
 
 /** When a price-driven order should fire. Pure — unit tested. */
 export function shouldFire(o: RuleView, price: number, mcUsd: number | null, now = new Date()): boolean {

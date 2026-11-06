@@ -59,6 +59,7 @@ model User {
   rewards        RewardEntry[]
   rewardClaims   RewardClaim[]
   priceAlerts    PriceAlert[]
+  walletCopies   WalletCopy[]
   watchlist     WatchItem[]
 }
 
@@ -593,4 +594,37 @@ model WatchItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, chain, address])
+}
+
+/// Copy any on-chain wallet (GMGN "WalletCopy"): mirrors its pump.fun buys/sells from the live feed.
+model WalletCopy {
+  id         String   @id @default(cuid())
+  userId     String
+  chain      Chain    @default(solana)
+  wallet     String
+  label      String
+  /// fixed = buyAmount each time; ratio = ratioPct% of their size, capped at buyAmount
+  buyMode    String   @default("fixed")
+  buyAmount  String
+  ratioPct   Int?
+  /// copy = sell the same share they sold; none = never sell (use TP/SL)
+  sellMode   String   @default("copy")
+  minMcUsd   Float?
+  maxMcUsd   Float?
+  maxAgeMin  Int?
+  buyOnce    Boolean  @default(true)
+  skipAddOn  Boolean  @default(true)
+  blacklist  String[] @default([])
+  tpPct      Float?
+  slPct      Float?
+  slippageBps Int     @default(2500)
+  status     String   @default("active") // active | paused
+  buys       Int      @default(0)
+  sells      Int      @default(0)
+  skipped    Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chain, wallet])
+  @@index([wallet, status])
 }

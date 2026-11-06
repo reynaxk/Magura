@@ -42,6 +42,10 @@ export interface WalletFill {
   native: number;
   tokens: number;
   realized: number;
+  /** their balance before this trade (sells → share sold) and whether it's their first buy here */
+  prevBal: number;
+  firstBuy: boolean;
+  signature?: string;
   at: Date;
 }
 export type FillHandler = (f: WalletFill) => void;
@@ -222,7 +226,19 @@ export class IntelService implements OnModuleInit {
         const avgCost = prev && prev.bt > 0 ? prev.ni / prev.bt : 0;
         const soldKnown = prev ? Math.min(t.tokenAmount, prev.bal) : 0;
         const realized = t.side === 'sell' && prev && prev.bt > 0 ? (t.nativeAmount * soldKnown) / Math.max(t.tokenAmount, 1e-9) - avgCost * soldKnown : 0;
-        const fill: WalletFill = { chain, mint: address, wallet: t.wallet, side: t.side, native: t.nativeAmount, tokens: t.tokenAmount, realized, at: t.at };
+        const fill: WalletFill = {
+          chain,
+          mint: address,
+          wallet: t.wallet,
+          side: t.side,
+          native: t.nativeAmount,
+          tokens: t.tokenAmount,
+          realized,
+          prevBal: prev?.bal ?? 0,
+          firstBuy: t.side === 'buy' && !(prev && prev.bt > 0),
+          signature: t.signature,
+          at: t.at,
+        };
         for (const h of this.fillHandlers) h(fill);
       }
       changed = true;

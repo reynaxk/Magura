@@ -11,7 +11,7 @@ import { TradingService } from './trading.service';
 import { BUY_KINDS, EVENT_KINDS, shouldArm, shouldFire } from './orders.rules';
 import { IntelService } from '../market/intel.service';
 
-export type OrderKind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell' | 'dev_snipe';
+export type OrderKind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell' | 'dev_snipe' | 'copy_buy' | 'copy_sell';
 
 export const ORDER_NAME: Record<OrderKind, string> = {
   tp: 'Take profit',
@@ -25,6 +25,8 @@ export const ORDER_NAME: Record<OrderKind, string> = {
   migrate_buy: 'Buy on migration',
   migrate_sell: 'Sell on migration',
   dev_snipe: 'Dev snipe',
+  copy_buy: 'Wallet copy buy',
+  copy_sell: 'Wallet copy sell',
 };
 const isBuy = (k: string) => (BUY_KINDS as readonly string[]).includes(k);
 
@@ -148,6 +150,7 @@ export class OrdersService implements OnModuleInit {
     if (!r) return { ok: true };
     const next = r.kind === 'dca' ? this.afterFill(r) : { status: skipped ? 'cancelled' : 'done' };
     await this.prisma.db.orderRule.update({ where: { id }, data: { ...next, txHash } });
+    if (!skipped) await this.attachExits(r).catch(() => undefined);
     return { ok: true };
   }
 
@@ -194,6 +197,39 @@ export class OrdersService implements OnModuleInit {
     }
   }
 
+  /**
+   * Execute a one-off automated trade now (wallet copy). Recorded as an order so it shows up
+   * in history, uses the same delegated / confirm flow, and can attach TP / SL after a buy.
+   */
+  async executeNow(o: { userId: string; chain: ChainId; token: string; symbol: string; kind: 'copy_buy' | 'copy_sell'; buyAmount?: string; sellPct?: number; slippageBps: number; tpPct?: number | null; slPct?: number | null }) {
+    const r = await this.prisma.db.orderRule.create({
+      data: {
+        userId: o.userId,
+        chain: o.chain,
+        tokenAddress: o.token,
+        tokenSymbol: o.symbol.slice(0, 20) || '?',
+        kind: o.kind,
+        buyAmount: o.buyAmount ?? null,
+        sellPct: o.sellPct ?? null,
+        slippageBps: o.slippageBps,
+        // exits to attach after the buy fills
+        triggerPct: o.tpPct ?? null,
+        armPct: o.slPct ?? null,
+      },
+    });
+    await this.fire(r);
+  }
+
+  /** After a copy buy fills: set its take profit / stop loss from the fill price. */
+  private async attachExits(r: OrderRule) {
+    if (r.kind !== 'copy_buy' || (!r.triggerPct && !r.armPct)) return;
+    const { price } = await this.market(r.chain as ChainId, r.tokenAddress);
+    if (price == null) return;
+    const base = { userId: r.userId, chain: r.chain, tokenAddress: r.tokenAddress, tokenSymbol: r.tokenSymbol, slippageBps: r.slippageBps, entryPrice: price, peakPrice: price, sellPct: 100 };
+    if (r.triggerPct) await this.prisma.db.orderRule.create({ data: { ...base, kind: 'tp', triggerPct: r.triggerPct } });
+    if (r.armPct) await this.prisma.db.orderRule.create({ data: { ...base, kind: 'sl', triggerPct: -Math.abs(r.armPct) } });
+  }
+
   private async fire(r: OrderRule) {
     // claim it — two API replicas never fire the same rule
     const claimed = await this.prisma.db.orderRule.updateMany({ where: { id: r.id, status: 'active' }, data: { status: 'executing', triggeredAt: new Date() } });
@@ -233,6 +269,7 @@ export class OrdersService implements OnModuleInit {
       const user = await this.prisma.db.user.findUniqueOrThrow({ where: { id: r.userId } });
       await this.trading.record(user, { quoteId: q.quoteId, chain, side, tokenAddress: r.tokenAddress, tokenSymbol: r.tokenSymbol, txHash: hash, source: 'order', shareToRoom: false });
       await this.prisma.db.orderRule.update({ where: { id: r.id }, data: { ...this.afterFill(r), txHash: hash } });
+      await this.attachExits(r).catch(() => undefined);
       this.rt.toUser(r.userId, 'order:fired', { orderId: r.id, kind: r.kind, side, symbol: r.tokenSymbol, chain, token: r.tokenAddress, needsConfirm: false, txHash: hash });
       await this.notify.notify(r.userId, 'order', `${name} filled on ${r.tokenSymbol}`, side === 'sell' ? `Sold ${r.sellPct ?? 100}% of your position` : `Bought for ${r.buyAmount} ${CHAINS[chain].nativeSymbol}`, `/t/${chain}/${r.tokenAddress}`);
     } catch (e) {

@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { WalletCopyPanel } from '@/components/wallet-copy';
 import { useQuery } from '@tanstack/react-query';
 import { fmtUsd } from '@magura/shared';
 import { api } from '@/lib/api';
@@ -9,14 +11,48 @@ import type { LeaderRow } from '@/components/terminal';
 import { Avatar, Delta, Empty, Segmented, Icon } from '@/components/ui';
 
 export default function CopyPage() {
+  return (
+    <Suspense>
+      <CopyInner />
+    </Suspense>
+  );
+}
+
+function CopyInner() {
+  const params = useSearchParams();
+  const walletParam = params.get('wallet') ?? '';
+  const [mode, setMode] = useState<'traders' | 'wallets'>(walletParam ? 'wallets' : 'traders');
   const [days, setDays] = useState<'7' | '30' | '90' | '3650'>('30');
   const [q, setQ] = useState('');
   const lb = useQuery({ queryKey: ['leaderboard', days], queryFn: () => api<LeaderRow[]>(`/copy/leaderboard?days=${days}`) });
   const rows = (lb.data ?? []).filter((r) => r.handle.includes(q.toLowerCase()));
   const podium = rows.slice(0, 3);
 
+  const tabs = (
+    <Segmented
+      label="Copy"
+      value={mode}
+      onChange={setMode}
+      options={[
+        { value: 'traders', label: 'Magura traders' },
+        { value: 'wallets', label: 'Any wallet' },
+      ]}
+    />
+  );
+  if (mode === 'wallets')
+    return (
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 p-4 md:p-6">
+        <div className="flex flex-wrap items-end gap-4">
+          <h1 className="text-[26px] font-semibold tracking-tight md:text-[34px]">Copy any wallet.</h1>
+          <div className="ml-auto">{tabs}</div>
+        </div>
+        <WalletCopyPanel initialWallet={walletParam} />
+      </div>
+    );
+
   return (
     <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 p-4 md:p-6">
+      <div>{tabs}</div>
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[26px] font-semibold tracking-tight md:text-[34px]">Copy the best. Automatically.</h1>

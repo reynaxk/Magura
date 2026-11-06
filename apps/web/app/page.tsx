@@ -11,8 +11,10 @@ import { useSession } from '@/lib/session';
 import type { LeaderRow } from '@/components/terminal';
 import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg, ChatBadge, Flash } from '@/components/ui';
 import { useDensity } from '@/lib/prefs';
+import { ProSidebar } from '@/components/pro-sidebar';
+import { useInstantTrade } from '@/lib/trade';
 
-type Sort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
+type Sort = 'hot' | 'm5' | 'gainers' | 'losers' | 'volume' | 'new';
 
 const CHAIN_SHORT: Record<ChainId, string> = { solana: 'SOL', base: 'BASE', bsc: 'BNB', ethereum: 'ETH' };
 
@@ -34,22 +36,29 @@ export default function HuntPage() {
   const params = new URLSearchParams({ sort, limit: '60', f: JSON.stringify(filter) });
 
   const list = useQuery({ queryKey: ['hunt', params.toString()], queryFn: () => api<HuntToken[]>(`/market/hunt?${params}`), refetchInterval: 20_000, enabled: !debounced });
-  const search = useQuery({ queryKey: ['search', debounced], queryFn: () => api<PairSummary[]>(`/market/search?q=${encodeURIComponent(debounced)}`), enabled: debounced.length >= 2 });
+  const search = useQuery({
+    queryKey: ['search', debounced],
+    queryFn: () => api<PairSummary[]>(`/market/search?q=${encodeURIComponent(debounced)}`),
+    enabled: debounced.length >= 2,
+  });
 
   const open = (chain: string, address: string) => router.push(`/t/${chain}/${address}`);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1500px] flex-wrap items-start gap-5 p-3 md:p-6">
-      <div className="flex min-w-0 flex-[999_1_720px] flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-[28px] font-semibold tracking-tight md:text-[32px]">Hunt</h1>
-            <p className="text-sm text-muted">Find the next coin before everyone else — ranked by volume, momentum and how loud the room is.</p>
-          </div>
+    <div className="flex w-full items-start">
+      <ProSidebar />
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 md:p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-[22px] font-semibold tracking-tight">Trending</h1>
           <label className="flex h-11 w-full items-center gap-2.5 rounded-xl border border-line-2 bg-raised px-3.5 md:ml-auto md:w-[340px]">
             <Svg d={Icon.search} size={16} color="#8A93A6" />
             <span className="sr-only">Search coins</span>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a coin or paste a contract" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-faint" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search a coin or paste a contract"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
+            />
           </label>
         </div>
 
@@ -62,6 +71,7 @@ export default function HuntPage() {
                 onChange={setSort}
                 options={[
                   { value: 'hot', label: 'Hot' },
+                  { value: 'm5', label: '5m' },
                   { value: 'gainers', label: 'Gainers' },
                   { value: 'losers', label: 'Losers' },
                   { value: 'volume', label: 'Volume' },
@@ -87,7 +97,11 @@ export default function HuntPage() {
         {debounced ? (
           <section className="panel p-2">
             {search.data?.map((p) => (
-              <button key={`${p.chain}:${p.baseToken.address}`} onClick={() => open(p.chain, p.baseToken.address)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-hover">
+              <button
+                key={`${p.chain}:${p.baseToken.address}`}
+                onClick={() => open(p.chain, p.baseToken.address)}
+                className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-hover"
+              >
                 <Avatar name={p.baseToken.symbol} src={p.imageUrl} size={36} shape="circle" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="font-semibold">{p.baseToken.symbol}</span>
@@ -105,77 +119,107 @@ export default function HuntPage() {
           </section>
         ) : (
           <section aria-label="Coins" className="panel overflow-hidden">
-            <div className="hidden md:block">
-              <table className="w-full text-[13px]">
-                <thead>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[1080px] text-[12px]">
+                <thead className="sticky top-0 z-[1] bg-panel">
                   <tr className="label border-b border-line text-left">
-                    <th className="w-10 py-3 pl-4 font-medium">#</th>
-                    <th className="font-medium">Coin</th>
-                    <th className="px-2.5 text-right font-medium">Price</th>
-                    <th className="px-2.5 text-right font-medium">1h</th>
-                    <th className="px-2.5 text-right font-medium">24h</th>
-                    <th className="whitespace-nowrap px-2.5 text-right font-medium">Mkt cap</th>
-                    <th className="px-2.5 text-right font-medium">Volume</th>
-                    <th className="px-2.5 text-right font-medium">Liq.</th>
-                    <th className="pl-5 font-medium">Room</th>
-                    <th className="font-medium">Risk</th>
+                    <th className="py-2.5 pl-3 font-medium">Token</th>
+                    <th className="px-2 text-right font-medium">MC</th>
+                    <th className="px-2 text-right font-medium">ATH MC</th>
+                    <th className="px-2 text-right font-medium">Liq</th>
+                    <th className="px-2 text-right font-medium">1h</th>
+                    <th className="px-2 text-right font-medium">24h</th>
+                    <th className="px-2 text-right font-medium">Vol</th>
+                    <th className="px-2 text-right font-medium">5m TXs</th>
+                    <th className="px-2 text-right font-medium">Holders</th>
+                    <th className="px-2 font-medium">Token info</th>
+                    <th className="px-2 font-medium">Room</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {list.data?.map((t, i) => (
-                    <tr key={`${t.chain}:${t.address}`} onClick={() => open(t.chain, t.address)} className="cursor-pointer border-b border-[#151820] hover:bg-hover">
-                      <td className={`num pl-4 text-muted ${compact ? 'py-1.5 text-xs' : 'py-3'}`}>{i + 1}</td>
-                      <td>
-                        <span className="flex items-center gap-2.5">
-                          <Avatar name={t.symbol} src={t.imageUrl} size={compact ? 22 : 34} shape="circle" />
-                          <span className={`flex min-w-0 ${compact ? 'items-center gap-2' : 'flex-col'}`}>
-                            <span className="flex items-center gap-1.5 font-semibold">
-                              {t.symbol}
-                              <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
-                            </span>
-                            <span className="max-w-[160px] truncate text-[11px] text-muted">
-                              {t.name} · {fmtAge(t.createdAt)}
+                  {list.data?.map((t) => {
+                    const i = t.intel ?? null;
+                    const chip = (label: string, v: number | null | undefined, warn: number) => (
+                      <span key={label} className="num flex items-center gap-0.5 text-[10.5px]">
+                        <span className="text-faint">{label}</span>
+                        <span className={v == null ? 'text-faint' : v === 0 ? 'text-lime' : v > warn ? 'text-down-2' : 'text-amber'}>
+                          {v == null ? '—' : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`}
+                        </span>
+                      </span>
+                    );
+                    return (
+                      <tr key={`${t.chain}:${t.address}`} onClick={() => open(t.chain, t.address)} className="cursor-pointer border-b border-[#151820] hover:bg-hover">
+                        <td className="py-2 pl-3">
+                          <span className="flex items-center gap-2.5">
+                            <Avatar name={t.symbol} src={t.imageUrl} size={compact ? 26 : 34} />
+                            <span className="flex min-w-0 flex-col leading-tight">
+                              <span className="flex items-center gap-1.5 font-semibold">
+                                {t.symbol}
+                                <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
+                                {t.devSold && <span className="rounded bg-down-dim px-1 text-[9px] font-bold text-down-2">DEV SOLD</span>}
+                              </span>
+                              <span className="flex items-center gap-1.5 text-[10.5px] text-muted">
+                                <span className="num text-lime">{fmtAge(t.createdAt)}</span>
+                                <span className="max-w-[120px] truncate">{t.name}</span>
+                                {t.hasX && <Svg d="M4 4l16 16M20 4L4 20" size={10} />}
+                                {t.hasTelegram && <Svg d="M21 4L3 11l6 2 2 6 3-4 5 4z" size={10} />}
+                                {t.hasWebsite && <Svg d={Icon.globe} size={10} />}
+                              </span>
                             </span>
                           </span>
-                        </span>
-                      </td>
-                      <td className="num px-2.5 text-right">
-                        <Flash value={t.priceUsd}>{t.priceUsd != null ? `$${fmtPrice(t.priceUsd)}` : '—'}</Flash>
-                      </td>
-                      <td className="px-2.5 text-right">
-                        <Delta value={t.change1h} />
-                      </td>
-                      <td className="px-2.5 text-right">
-                        <Delta value={t.change24h} />
-                      </td>
-                      <td className="num px-2.5 text-right">{fmtUsd(t.marketCapUsd)}</td>
-                      <td className="num px-2.5 text-right">{fmtUsd(t.volumeUsd)}</td>
-                      <td className="num px-2.5 text-right">{fmtUsd(t.liquidityUsd)}</td>
-                      <td className="pl-5">
-                        <span className="flex items-center gap-2">
-                          <ChatBadge count={t.chatCount} />
-                          {t.friendsBought.length > 0 && (
-                            <span className="mr-1.5 flex" title={`${t.friendsBought.map((f) => f.handle).join(', ')} bought`}>
-                              {t.friendsBought.slice(0, 3).map((f) => (
-                                <span key={f.userId} className="-mr-1.5">
-                                  <Avatar name={f.handle} src={f.avatarUrl} size={20} shape="circle" ring="#0E1015" />
-                                </span>
-                              ))}
-                            </span>
+                        </td>
+                        <td className="num px-2 text-right font-semibold">
+                          <Flash value={t.marketCapUsd}>{fmtUsd(t.marketCapUsd)}</Flash>
+                        </td>
+                        <td className="num px-2 text-right text-text-2">{fmtUsd(t.athMarketCapUsd)}</td>
+                        <td className="num px-2 text-right text-text-2">{fmtUsd(t.liquidityUsd)}</td>
+                        <td className="px-2 text-right">
+                          <Delta value={t.change1h} />
+                        </td>
+                        <td className="px-2 text-right">
+                          <Delta value={t.change24h} />
+                        </td>
+                        <td className="num px-2 text-right">{fmtUsd(t.volumeUsd)}</td>
+                        <td className="num px-2 text-right">
+                          {t.buys5m != null ? (
+                            <>
+                              <span className="text-lime">{t.buys5m}</span>/<span className="text-down-2">{t.sells5m ?? 0}</span>
+                            </>
+                          ) : (
+                            '—'
                           )}
-                        </span>
-                      </td>
-                      <td>
-                        <RiskTags risk={t.risk} />
-                      </td>
-                      <td className="pr-4 text-right">
-                        <Link href={`/t/${t.chain}/${t.address}`} onClick={(e) => e.stopPropagation()} className={`btn-lime px-3 text-xs ${compact ? 'h-7' : 'h-8'}`}>
-                          Trade
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="num px-2 text-right">{(i?.holders ?? t.holders)?.toLocaleString() ?? '—'}</td>
+                        <td className="px-2">
+                          <span className="flex items-center gap-2">
+                            {chip('T10', i?.top10Pct ?? t.risk?.top10Pct, 30)}
+                            {chip('DEV', i?.devPct ?? t.risk?.devPct, 10)}
+                            {chip('SNP', i?.sniperPct ?? t.risk?.sniperPct, 10)}
+                            {chip('BND', i?.bundlerPct, 10)}
+                            {chip('INS', i?.insiderPct, 10)}
+                          </span>
+                        </td>
+                        <td className="px-2">
+                          <span className="flex items-center gap-1.5">
+                            <ChatBadge count={t.chatCount} />
+                            {t.friendsBought.length > 0 && (
+                              <span className="flex" title={`${t.friendsBought.map((f) => f.handle).join(', ')} bought`}>
+                                {t.friendsBought.slice(0, 3).map((f) => (
+                                  <span key={f.userId} className="-mr-1.5">
+                                    <Avatar name={f.handle} src={f.avatarUrl} size={18} shape="circle" ring="#0E1015" />
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="pr-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <QuickBuy chain={t.chain} address={t.address} symbol={t.symbol} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -212,13 +256,31 @@ export default function HuntPage() {
               ))}
             </ul>
             {list.isLoading && <p className="p-6 text-sm text-muted">Loading coins…</p>}
-            {list.data?.length === 0 && <Empty icon={Icon.search} title="No coins match these filters">Loosen a filter or switch chains.</Empty>}
+            {list.data?.length === 0 && (
+              <Empty icon={Icon.search} title="No coins match these filters">
+                Loosen a filter or switch chains.
+              </Empty>
+            )}
           </section>
         )}
       </div>
-
-      <HuntRail loggedIn={!!me} />
     </div>
+  );
+}
+
+/** One-tap buy from the table with your preset amount. */
+function QuickBuy({ chain, address, symbol }: { chain: ChainId; address: string; symbol: string }) {
+  const { run, busy, buyAmounts } = useInstantTrade({ chain, token: address, symbol });
+  const amt = buyAmounts[0] ?? '0.1';
+  return (
+    <button
+      onClick={() => run('buy', amt)}
+      disabled={!!busy}
+      className="num inline-flex h-7 items-center gap-1 rounded-md bg-lime-dim px-2.5 text-[11px] font-semibold text-lime ring-1 ring-lime-line hover:bg-lime hover:text-bg"
+    >
+      <Svg d={Icon.bolt} size={11} />
+      {busy ? '…' : amt}
+    </button>
   );
 }
 
@@ -232,7 +294,11 @@ interface FriendBuy {
 
 function HuntRail({ loggedIn }: { loggedIn: boolean }) {
   const friends = useQuery({ queryKey: ['hunt-friends'], queryFn: () => api<FriendBuy[]>('/market/hunt/friends'), enabled: loggedIn, refetchInterval: 30_000 });
-  const calls = useQuery({ queryKey: ['hunt-calls'], queryFn: () => api<(ChatMessageDTO & { group: { slug: string; name: string } })[]>('/market/hunt/calls'), refetchInterval: 30_000 });
+  const calls = useQuery({
+    queryKey: ['hunt-calls'],
+    queryFn: () => api<(ChatMessageDTO & { group: { slug: string; name: string } })[]>('/market/hunt/calls'),
+    refetchInterval: 30_000,
+  });
   const leaders = useQuery({ queryKey: ['leaderboard', 30], queryFn: () => api<LeaderRow[]>('/copy/leaderboard?days=30'), staleTime: 60_000 });
 
   return (
@@ -272,7 +338,11 @@ function HuntRail({ loggedIn }: { loggedIn: boolean }) {
         {calls.data?.length === 0 && <p className="text-xs text-muted">No spot calls posted yet.</p>}
         {calls.data?.map((c) =>
           c.attachment?.kind === 'call' ? (
-            <Link key={c.id} href={`/t/${c.attachment.chain}/${c.attachment.token.address}`} className="flex flex-col gap-1.5 rounded-xl border border-line-2 bg-raised p-3 hover:bg-hover">
+            <Link
+              key={c.id}
+              href={`/t/${c.attachment.chain}/${c.attachment.token.address}`}
+              className="flex flex-col gap-1.5 rounded-xl border border-line-2 bg-raised p-3 hover:bg-hover"
+            >
               <span className="flex items-center gap-2">
                 <span className="rounded-[5px] bg-lime px-1.5 py-0.5 text-[10px] font-semibold text-bg">CALL</span>
                 <span className="num font-semibold">{c.attachment.token.symbol}</span>

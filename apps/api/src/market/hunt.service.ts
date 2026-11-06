@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Token } from '@magura/db';
-import { matchesFilter, roomIds, type ChainId, type ChatMessageDTO, type CoinFilter, type HuntToken, type TokenRisk, type TrenchStage } from '@magura/shared';
+import { matchesFilter, roomIds, type ChainId, type ChatMessageDTO, type CoinFilter, type HuntToken, type TokenIntel, type TokenRisk, type TrenchStage } from '@magura/shared';
 import { factsFor } from './filter-facts';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
 
-export type HuntSort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new';
+export type HuntSort = 'hot' | 'gainers' | 'losers' | 'volume' | 'new' | 'm5';
 
 export interface HuntQuery {
   sort: HuntSort;
@@ -40,7 +40,7 @@ export class HuntService {
       viewerId ? this.friendsBought(viewerId, pool) : Promise.resolve([]),
     ]);
     const friendSet = new Set(friends.map((x) => x.tokenAddress));
-    const tokens = pool.filter((t) => matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), f));
+    const tokens = pool.filter((t) => (t.marketCapUsd ?? 0) < 3e12 && matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), f));
 
     const scored = tokens.map((t) => {
       const key = roomIds.coin(t.chain, t.address);
@@ -57,6 +57,7 @@ export class HuntService {
       losers: (a, b) => (a.t.priceChange24h ?? 1e9) - (b.t.priceChange24h ?? 1e9),
       volume: (a, b) => (b.t.volumeUsd ?? 0) - (a.t.volumeUsd ?? 0),
       new: (a, b) => +b.t.createdAt - +a.t.createdAt,
+      m5: (a, b) => (b.t.volume5m ?? 0) - (a.t.volume5m ?? 0),
     };
     const ranked = scored.sort(by[q.sort]).slice(0, q.limit);
     return { items: ranked.map(({ t, chatCount, hotScore }) => this.toRow(t, chatCount, hotScore, friends)), total: scored.length };
@@ -142,6 +143,17 @@ export class HuntService {
       volumeUsd: t.volumeUsd,
       liquidityUsd: t.liquidityUsd,
       risk: (t.risk as TokenRisk | null) ?? null,
+      intel: (t.intel as TokenIntel | null) ?? null,
+      holders: t.holders,
+      athMarketCapUsd: t.athMarketCapUsd,
+      volume5m: t.volume5m,
+      buys5m: t.buys5m,
+      sells5m: t.sells5m,
+      hasX: t.hasX,
+      hasTelegram: t.hasTelegram,
+      hasWebsite: t.hasWebsite,
+      launchpad: t.launchpad,
+      devSold: !!t.devSoldAt,
       chatCount,
       friendsBought: friends.filter((f) => f.tokenAddress === t.address).map((f) => ({ userId: f.user.id, handle: f.user.handle, avatarUrl: f.user.avatarUrl })),
       hotScore: Math.round(hotScore * 10) / 10,

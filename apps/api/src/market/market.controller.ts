@@ -31,7 +31,7 @@ export class MarketController {
   async huntList(@Query() q: Record<string, string>, @OptionalUser() user?: User) {
     const p = parse(
       z.object({
-        sort: z.enum(['hot', 'gainers', 'losers', 'volume', 'new']).default('hot'),
+        sort: z.enum(['hot', 'gainers', 'losers', 'volume', 'new', 'm5']).default('hot'),
         f: z.string().max(4000).optional(),
         count: z.enum(['1']).optional(),
         limit: z.coerce.number().int().min(1).max(100).default(50),

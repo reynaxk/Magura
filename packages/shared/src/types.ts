@@ -178,6 +178,17 @@ export interface HuntToken {
   volumeUsd: number | null;
   liquidityUsd: number | null;
   risk: TokenRisk | null;
+  intel?: TokenIntel | null;
+  holders?: number | null;
+  athMarketCapUsd?: number | null;
+  volume5m?: number | null;
+  buys5m?: number | null;
+  sells5m?: number | null;
+  hasX?: boolean;
+  hasTelegram?: boolean;
+  hasWebsite?: boolean;
+  launchpad?: string | null;
+  devSold?: boolean;
   chatCount: number;
   friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];
   hotScore: number;

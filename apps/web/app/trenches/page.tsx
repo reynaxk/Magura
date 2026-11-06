@@ -19,7 +19,6 @@ import { soundFor } from '@/lib/sounds';
 import { SupplySplit } from '@/components/supply-split';
 import { TrenchRow } from '@/components/trench-row';
 import { ProSidebar } from '@/components/pro-sidebar';
-import { useUiPrefs } from '@/lib/ui-prefs';
 
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
   { id: 'new', title: 'New Pairs', hint: 'just launched', accent: '#8FC6E6' },
@@ -41,8 +40,8 @@ export default function TrenchesPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const [mobileStage, setMobileStage] = useState<TrenchStage>('new');
   const [prefs, setPrefs] = useTrenchPrefs();
-  const [ui, setUi] = useUiPrefs();
-  const pro = ui.layout === 'pro';
+  // one layout: the dense Pro terminal
+  const pro = true;
   const [customizing, setCustomizing] = useState(false);
   const router = useRouter();
   const pick = (t: TrenchToken) => {
@@ -147,21 +146,9 @@ export default function TrenchesPage() {
             Settings
           </Link>
         </span>
-        <div role="group" aria-label="Layout" className="ml-auto flex rounded-xl border border-line-2 bg-raised p-0.5 xl:ml-0">
-          {(['clean', 'pro'] as const).map((l) => (
-            <button
-              key={l}
-              aria-pressed={ui.layout === l}
-              onClick={() => setUi({ ...ui, layout: l })}
-              className={`h-8 rounded-[9px] px-3 text-xs font-semibold capitalize ${ui.layout === l ? 'bg-text text-bg' : 'text-muted hover:text-text'}`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
         <button
           onClick={() => setCustomizing(true)}
-          className="flex h-9 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:text-text xl:ml-0"
+          className="ml-auto flex h-9 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:text-text xl:ml-0"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6" />

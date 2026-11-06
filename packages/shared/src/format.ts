@@ -6,6 +6,7 @@ export function fmtUsd(n: number | null | undefined, opts: { compact?: boolean }
     const units: [number, string][] = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
     for (const [v, u] of units) if (Math.abs(n) >= v) return `$${(n / v).toFixed(n / v >= 100 ? 0 : 1)}${u}`;
   }
+  if (Math.abs(n) < 0.0001 && n !== 0) return n < 0 ? '−<$0.0001' : '<$0.0001';
   if (Math.abs(n) < 0.01 && n !== 0) return `$${n.toPrecision(3)}`;
   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
 }

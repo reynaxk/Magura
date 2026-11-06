@@ -16,6 +16,8 @@ import { TrenchCard } from '@/components/trench-card';
 import { TrenchCustomize } from '@/components/trench-customize';
 import { useTrenchPrefs } from '@/lib/trench-prefs';
 import { soundFor } from '@/lib/sounds';
+import { usePresets } from '@/lib/trade';
+import { usePref } from '@/lib/prefs';
 import { SupplySplit } from '@/components/supply-split';
 import { TrenchRow } from '@/components/trench-row';
 import { ProSidebar } from '@/components/pro-sidebar';
@@ -49,7 +51,13 @@ export default function TrenchesPage() {
     if (prefs.click === 'page' || (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches)) router.push(`/t/${t.chain}/${t.address}`);
     else setSelected(t);
   };
-  const amountFor = (t: TrenchToken) => ((me?.settings?.quickBuyAmounts ?? {}) as Record<string, string>)[t.chain] ?? '0.1';
+  // per-column: search box + which preset (P1/P2/P3) its buy buttons use
+  const { presets } = usePresets();
+  const [cols, setCols] = usePref<Record<TrenchStage, { q: string; p: number }>>('trench-cols', { new: { q: '', p: 0 }, almost: { q: '', p: 0 }, survived: { q: '', p: 0 } });
+  const colOf = (stage: TrenchStage) => cols[stage] ?? { q: '', p: 0 };
+  const setCol = (stage: TrenchStage, patch: Partial<{ q: string; p: number }>) => setCols({ ...cols, [stage]: { ...colOf(stage), ...patch } });
+  const presetFor = (t: TrenchToken) => presets[colOf(t.stage).p] ?? presets[0];
+  const amountFor = (t: TrenchToken) => presetFor(t)?.buy[t.chain]?.[0] ?? ((me?.settings?.quickBuyAmounts ?? {}) as Record<string, string>)[t.chain] ?? '0.1';
   const [, tick] = useState(0);
   const keyOf = (stage: TrenchStage) => JSON.stringify(filters[stage][0]);
   const allChains = [...new Set([...fNew.chains, ...fAlmost.chains, ...fSurvived.chains])];
@@ -106,7 +114,7 @@ export default function TrenchesPage() {
     const amount = amountOverride ?? amountFor(t);
     setBuying(t.address);
     try {
-      const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: 1500, wallet } });
+      const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: presetFor(t)?.slippageBps ?? 1500, wallet } });
       const tx = await api<SwapTx>('/swap/build', { body: { quoteId: q.quoteId } });
       const txHash = await sendSwap(tx);
       soundFor('buy');
@@ -195,11 +203,39 @@ export default function TrenchesPage() {
         >
           {STAGES.map((s, i) => (
             <section key={s.id} aria-label={s.title} className={`min-w-0 flex-col border-line lg:flex lg:border-r ${mobileStage === s.id ? 'flex' : 'hidden'}`}>
-              <div className="hidden items-center gap-2.5 border-b border-line bg-bar px-4 py-3.5 lg:flex">
-                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.accent }} />
-                <h2 className="text-[15px] font-semibold">{s.title}</h2>
-                <span className="ml-auto text-[11px] text-muted">{s.hint}</span>
-                <FilterButton compact filter={filters[s.id][0]} onClick={() => setFilterFor(s.id)} />
+              <div className="hidden flex-col gap-2 border-b border-line bg-bar px-3 py-2.5 lg:flex">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.accent }} />
+                  <h2 className="text-[14px] font-semibold">{s.title}</h2>
+                  <span className="ml-auto flex gap-0.5 rounded-lg bg-raised p-0.5">
+                    {presets.slice(0, 3).map((p, pi) => (
+                      <button
+                        key={pi}
+                        onClick={() => setCol(s.id, { p: pi })}
+                        title={`${p.name}: buy ${p.buy.solana?.[0] ?? ''} SOL · ${p.slippageBps / 100}% slippage`}
+                        className={`num h-6 rounded-md px-1.5 text-[10.5px] font-semibold ${colOf(s.id).p === pi ? 'bg-lime-dim text-lime' : 'text-muted hover:text-text'}`}
+                      >
+                        P{pi + 1}
+                      </button>
+                    ))}
+                  </span>
+                  <FilterButton compact filter={filters[s.id][0]} onClick={() => setFilterFor(s.id)} />
+                </div>
+                <label className="flex h-8 items-center gap-2 rounded-lg border border-line-2 bg-raised px-2.5 focus-within:border-lime-line">
+                  <Svg d={Icon.search} size={13} color="#7A8397" />
+                  <span className="sr-only">Search {s.title}</span>
+                  <input
+                    value={colOf(s.id).q}
+                    onChange={(e) => setCol(s.id, { q: e.target.value })}
+                    placeholder="Search name, ticker, CA"
+                    className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
+                  />
+                  {colOf(s.id).q && (
+                    <button onClick={() => setCol(s.id, { q: '' })} aria-label="Clear search" className="text-[11px] text-faint hover:text-text">
+                      ×
+                    </button>
+                  )}
+                </label>
               </div>
               <div className={`scroll-thin flex flex-col lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto ${pro ? '' : 'gap-2 p-2.5'}`}>
                 {results[i].isLoading &&
@@ -207,6 +243,10 @@ export default function TrenchesPage() {
                 {results[i].data?.length === 0 && <p className="p-6 text-center text-sm text-muted">Nothing here yet — tokens stream in live.</p>}
                 {results[i].data
                   ?.filter((t) => !(prefs.hideDevSold && (t.devSold || t.intel?.devSoldAll)))
+                  .filter((t) => {
+                    const q = colOf(s.id).q.trim().toLowerCase();
+                    return !q || t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.address.toLowerCase() === q;
+                  })
                   .map((t) =>
                     pro ? (
                       <TrenchRow

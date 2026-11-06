@@ -295,6 +295,15 @@ function CoinHeader(p: {
             <a href={`${CHAINS[p.chain].explorer}/token/${p.address}`} target="_blank" rel="noreferrer" className="hover:text-text">
               Explorer ↗
             </a>
+            <a
+              href={`https://app.bubblemaps.io/${{ solana: 'sol', base: 'base', bsc: 'bsc', ethereum: 'eth' }[p.chain]}/token/${p.address}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-text"
+              title="See how holders are connected"
+            >
+              Bubblemap ↗
+            </a>
           </div>
         </div>
       </div>

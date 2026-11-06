@@ -1,5 +1,6 @@
 'use client';
 
+import { soundFor } from '@/lib/sounds';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CHAINS, bpsToPct, fromBaseUnits, nextTier, type ChainId, type SwapQuote, type SwapTx } from '@magura/shared';
@@ -8,6 +9,7 @@ import { useSession } from '@/lib/session';
 import { toast } from './toaster';
 import { Icon, Svg } from './ui';
 import { ActiveOrders, AutoTriggersForm, DcaForm, LimitBuyForm, TpSlForm } from './orders';
+import { CalloutBox } from './callout-box';
 import { ShareCardButton } from './share-card';
 
 type Quote = SwapQuote & { quoteId: string; amountUsd: number | null };
@@ -67,6 +69,7 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
         body: { quoteId: quote.quoteId },
       });
       const txHash = await sendSwap(tx);
+      soundFor(side);
       await api('/trades', {
         body: {
           quoteId: quote.quoteId,
@@ -198,6 +201,7 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
         </>
       )}
       <ActiveOrders chain={chain} token={token} symbol={symbol} />
+      {symbol !== '…' && <CalloutBox chain={chain} token={token} symbol={symbol} />}
       <ShareCardButton chain={chain} token={token} className="self-center text-xs text-muted hover:text-text" />
     </section>
   );

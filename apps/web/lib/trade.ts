@@ -1,5 +1,6 @@
 'use client';
 
+import { soundFor } from '@/lib/sounds';
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CHAINS, DEFAULT_PRESETS, type ChainId, type SwapQuote, type SwapTx, type TradePreset } from '@magura/shared';
@@ -72,6 +73,7 @@ export function useInstantTrade(target: TradeTarget | null) {
         });
         const tx = await api<SwapTx>('/swap/build', { body: { quoteId: quote.quoteId } });
         const txHash = await sendSwap(tx);
+        soundFor(side);
         await api('/trades', {
           body: {
             quoteId: quote.quoteId,

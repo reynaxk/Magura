@@ -57,3 +57,42 @@ export function computePnl(trades: PnlTrade[]): PnlSummary {
     openPositions: [...pos.entries()].filter(([, v]) => v.qty > 0n).map(([tokenKey, v]) => ({ tokenKey, qty: v.qty, costUsd: v.cost })),
   };
 }
+
+/** Realized PnL per UTC day (YYYY-MM-DD) — every sell books its gain on the day it happened. */
+export function realizedByDay(trades: (PnlTrade & { at: Date })[]): Record<string, number> {
+  const pos = new Map<string, { qty: bigint; cost: number }>();
+  const days: Record<string, number> = {};
+  for (const t of trades) {
+    const p = pos.get(t.tokenKey) ?? { qty: 0n, cost: 0 };
+    if (t.side === 'buy') {
+      p.qty += BigInt(t.amountOut || '0');
+      p.cost += t.amountUsd;
+    } else {
+      const sold = BigInt(t.amountIn || '0');
+      if (p.qty > 0n && sold > 0n) {
+        const frac = sold >= p.qty ? 1 : Number((sold * 1_000_000n) / p.qty) / 1_000_000;
+        const basis = p.cost * frac;
+        const d = t.at.toISOString().slice(0, 10);
+        days[d] = (days[d] ?? 0) + (t.amountUsd - basis);
+        p.cost -= basis;
+        p.qty = sold >= p.qty ? 0n : p.qty - sold;
+      }
+    }
+    pos.set(t.tokenKey, p);
+  }
+  return days;
+}
+
+/** Consecutive green trading days. Days without closed trades don't break a streak. */
+export function streaks(days: Record<string, number>): { current: number; best: number } {
+  const sorted = Object.keys(days).sort();
+  let cur = 0;
+  let best = 0;
+  for (const d of sorted) {
+    if (days[d] > 0) {
+      cur++;
+      best = Math.max(best, cur);
+    } else if (days[d] < 0) cur = 0;
+  }
+  return { current: cur, best };
+}

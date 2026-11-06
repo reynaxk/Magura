@@ -1,5 +1,6 @@
 'use client';
 
+import { AppearanceSettings, SoundSettings } from '@/components/appearance-settings';
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CHAIN_IDS, CHAINS, FEE_TIERS, MIN_TRADE_USD, bpsToPct, shortAddr } from '@magura/shared';
@@ -15,6 +16,8 @@ const SECTIONS = [
   ['trading', 'Trading'],
   ['copy', 'Copy defaults'],
   ['notif', 'Notifications'],
+  ['appearance', 'Appearance'],
+  ['sounds', 'Sounds & toasts'],
   ['privacy', 'Privacy & chat'],
   ['security', 'Security'],
 ] as const;
@@ -357,6 +360,9 @@ export default function SettingsPage() {
             </div>
           </>
         )}
+
+        {sec === 'appearance' && <AppearanceSettings />}
+        {sec === 'sounds' && <SoundSettings />}
 
         {sec === 'security' && (
           <>

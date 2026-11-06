@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AddFunds } from '@/components/add-funds';
 import { RecapCard } from '@/components/recap-share';
+import { PnlCalendar } from '@/components/pnl-calendar';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fmtUsd, type SwapTx } from '@magura/shared';
 import { api } from '@/lib/api';
@@ -244,6 +245,7 @@ export default function PortfolioPage() {
         </section>
       </div>
 
+      <PnlCalendar />
       <RecapCard />
 
       <section id="activity" className="panel flex flex-col p-5">

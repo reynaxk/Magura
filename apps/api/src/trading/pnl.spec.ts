@@ -71,3 +71,16 @@ test('coin filters', async () => {
   assert.equal(sourceOf('fourmeme', null), 'fourmeme');
   assert.equal(activeFilterCount({ ...EMPTY_FILTER, hasX: true, ranges: { liquidity: { min: 1 } } }), 2);
 });
+
+test('realized PnL books on the day of the sell; streaks skip flat days', async () => {
+  const { realizedByDay, streaks } = await import('./pnl');
+  const d = (s: string) => new Date(`${s}T12:00:00Z`);
+  const days = realizedByDay([
+    { tokenKey: 'a', side: 'buy', amountIn: '1', amountOut: '100', amountUsd: 100, at: d('2026-11-01') },
+    { tokenKey: 'a', side: 'sell', amountIn: '50', amountOut: '1', amountUsd: 80, at: d('2026-11-02') },
+    { tokenKey: 'a', side: 'sell', amountIn: '50', amountOut: '1', amountUsd: 40, at: d('2026-11-04') },
+  ]);
+  assert.equal(days['2026-11-02'], 30);
+  assert.equal(days['2026-11-04'], -10);
+  assert.deepEqual(streaks({ '2026-11-01': 5, '2026-11-02': 3, '2026-11-05': -1, '2026-11-06': 2 }), { current: 1, best: 2 });
+});

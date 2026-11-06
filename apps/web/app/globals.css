@@ -36,6 +36,58 @@
   --radius-panel: 20px;
 }
 
+/* Theme presets — override the tokens above. The accent is set from JS (Settings → Appearance). */
+html[data-theme='oled'] {
+  --color-bg: #000000;
+  --color-bar: #050505;
+  --color-panel: #0a0a0a;
+  --color-raised: #0f0f10;
+  --color-hover: #141416;
+  --color-line: #18181b;
+  --color-line-2: #1e1e22;
+  --color-line-3: #29292f;
+}
+html[data-theme='midnight'] {
+  --color-bg: #070b14;
+  --color-bar: #0a0f1b;
+  --color-panel: #0d1320;
+  --color-raised: #101828;
+  --color-hover: #142033;
+  --color-line: #18223a;
+  --color-line-2: #1d2945;
+  --color-line-3: #263557;
+}
+html[data-theme='graphite'] {
+  --color-bg: #111214;
+  --color-bar: #141518;
+  --color-panel: #17191c;
+  --color-raised: #1b1d21;
+  --color-hover: #202328;
+  --color-line: #24272d;
+  --color-line-2: #2a2e35;
+  --color-line-3: #353a43;
+}
+html[data-theme='ember'] {
+  --color-bg: #0c0907;
+  --color-bar: #100c0a;
+  --color-panel: #140f0c;
+  --color-raised: #1a1310;
+  --color-hover: #211813;
+  --color-line: #261c16;
+  --color-line-2: #2d221b;
+  --color-line-3: #3a2c23;
+}
+html[data-theme='violet'] {
+  --color-bg: #0a0812;
+  --color-bar: #0d0b17;
+  --color-panel: #110e1b;
+  --color-raised: #16121f;
+  --color-hover: #1c1727;
+  --color-line: #201a2d;
+  --color-line-2: #261f36;
+  --color-line-3: #322945;
+}
+
 html,
 body {
   background: var(--color-bg);

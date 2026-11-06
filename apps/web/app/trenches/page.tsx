@@ -15,6 +15,7 @@ import { Avatar, Icon, Svg } from '@/components/ui';
 import { TrenchCard } from '@/components/trench-card';
 import { TrenchCustomize } from '@/components/trench-customize';
 import { useTrenchPrefs } from '@/lib/trench-prefs';
+import { soundFor } from '@/lib/sounds';
 import { SupplySplit } from '@/components/supply-split';
 
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
@@ -104,6 +105,7 @@ export default function TrenchesPage() {
       const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: 1500, wallet } });
       const tx = await api<SwapTx>('/swap/build', { body: { quoteId: q.quoteId } });
       const txHash = await sendSwap(tx);
+      soundFor('buy');
       await api('/trades', { body: { quoteId: q.quoteId, chain: t.chain, side: 'buy', tokenAddress: t.address, tokenSymbol: t.symbol, txHash, shareToRoom: true, source: 'quickbuy' } });
       toast({ title: `Bought ${t.symbol}`, body: `${amount} ${CHAINS[t.chain].nativeSymbol} · confirming`, tone: 'lime' });
     } catch (e) {

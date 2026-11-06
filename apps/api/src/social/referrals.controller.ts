@@ -6,7 +6,7 @@ import type { ChainId } from '@magura/shared';
 import { CurrentUser, OptionalUser, Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
-import { computePnl } from '../trading/pnl';
+import { computePnl, realizedByDay, streaks } from '../trading/pnl';
 import { ReferralsService } from './referrals.service';
 
 @Controller()
@@ -39,6 +39,38 @@ export class ReferralsController {
   claim(@Body() body: unknown, @CurrentUser() user: User) {
     const b = parse(z.object({ chain: zChain }), body);
     return this.refs.claim(user, b.chain);
+  }
+
+  /** PnL calendar: realized PnL for every day of a month, with green-day streaks. */
+  @Public()
+  @Get('cards/calendar/:handle/:month')
+  async calendar(@Param('handle') handle: string, @Param('month') month: string, @OptionalUser() viewer?: User) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new NotFoundException();
+    const u = await this.prisma.db.user.findUnique({ where: { handle: handle.toLowerCase() }, include: { settings: true } });
+    if (!u) throw new NotFoundException();
+    if (u.settings && !u.settings.publicPnl && viewer?.id !== u.id) throw new ForbiddenException('private');
+    const [y, m] = month.split('-').map(Number);
+    const to = new Date(Date.UTC(y, m, 1));
+    const all = await this.prisma.db.trade.findMany({ where: { userId: u.id, status: 'confirmed', createdAt: { lt: to } }, orderBy: { createdAt: 'asc' } });
+    const byDay = realizedByDay(
+      all.map((t) => ({ tokenKey: `${t.chain}:${t.tokenAddress}`, side: t.side as 'buy' | 'sell', amountIn: t.amountIn, amountOut: t.amountOut, amountUsd: Number(t.amountUsd ?? 0), at: t.createdAt })),
+    );
+    const days: Record<string, number> = {};
+    for (const [d, v] of Object.entries(byDay)) if (d.startsWith(month)) days[d] = Math.round(v * 100) / 100;
+    const all30 = streaks(byDay);
+    const inMonth = streaks(days);
+    const values = Object.values(days);
+    return {
+      handle: u.handle,
+      avatarUrl: u.avatarUrl,
+      month,
+      days,
+      totalUsd: Math.round(values.reduce((a, b) => a + b, 0) * 100) / 100,
+      greenDays: values.filter((v) => v > 0).length,
+      redDays: values.filter((v) => v < 0).length,
+      currentStreak: all30.current,
+      bestStreak: inMonth.best,
+    };
   }
 
   /** Month recap for a shareable card: trades, volume, realized PnL, win rate, best coin. */

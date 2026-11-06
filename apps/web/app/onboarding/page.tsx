@@ -35,7 +35,7 @@ export default function OnboardingPage() {
       method: 'PATCH',
       body: { copyMemecoins: safe.memes, copyStopLossPct: safe.stop ? 20 : 100, copyConfirmAboveUsd: safe.confirm ? 500 : 1_000_000, copyMaxPerBuyUsd: safe.cap ? 250 : 100_000 },
     });
-    router.push('/');
+    router.push('/trenches');
   }
 
   const [, , heading, desc] = STEPS[step];

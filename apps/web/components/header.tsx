@@ -14,7 +14,7 @@ import { Avatar, Icon, Svg } from './ui';
 
 const NAV = [
   { href: '/trenches', label: 'Trenches' },
-  { href: '/', label: 'Trending' },
+  { href: '/trending', label: 'Trending' },
   { href: '/smart', label: 'Smart' },
   { href: '/monitor', label: 'Monitor' },
   { href: '/copy', label: 'Copy' },
@@ -47,7 +47,7 @@ export function Header() {
   return (
     <>
     <header className="sticky top-0 z-40 flex min-h-14 items-center gap-5 border-b border-line bg-bar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-wrap md:px-6 md:py-3">
-      <Link href="/" aria-label="Magura home">
+      <Link href="/trenches" aria-label="Magura terminal">
         <span className="md:hidden">
           <Wordmark compact />
         </span>
@@ -57,7 +57,7 @@ export function Header() {
       </Link>
       <nav aria-label="Sections" className="hidden flex-wrap gap-0.5 md:flex">
         {NAV.map((n) => {
-          const active = n.href === '/' ? path === '/' || path?.startsWith('/t/') : path?.startsWith(n.href);
+          const active = n.href === '/trending' ? path === '/trending' || path?.startsWith('/t/') : path?.startsWith(n.href);
           return (
             <Link
               key={n.href}
@@ -151,7 +151,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
 }
 
 const TABS = [
-  { href: '/', label: 'Trending', d: 'M3 17l5-5 4 4 9-9M15 7h6v6', match: (p: string) => p === '/' || p.startsWith('/t/') },
+  { href: '/trending', label: 'Trending', d: 'M3 17l5-5 4 4 9-9M15 7h6v6', match: (p: string) => p === '/trending' || p.startsWith('/t/') },
   { href: '/trenches', label: 'Trenches', d: 'M13 2L4 14h7l-1 8 9-12h-7z', match: (p: string) => p.startsWith('/trenches') },
   { href: '/copy', label: 'Copy', d: 'M8 8h11v11H8zM5 16V5h11', match: (p: string) => p.startsWith('/copy') || p.startsWith('/u/') },
   {

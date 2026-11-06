@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Magura',
     short_name: 'Magura',
     description: 'Social spot trading terminal. Trade together, copy the best, live in every coin.',
-    start_url: '/',
+    start_url: '/trenches',
     display: 'standalone',
     background_color: '#08090C',
     theme_color: '#08090C',

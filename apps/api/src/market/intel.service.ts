@@ -157,7 +157,7 @@ export class IntelService implements OnModuleInit {
   }
 
   /** Pull recent trades for a coin: pump.fun's API (with slots) for pump coins, GeckoTerminal otherwise. */
-  async backfill(chain: ChainId, address: string): Promise<boolean> {
+  async backfill(chain: ChainId, address: string, opts: { allowGecko?: boolean } = {}): Promise<boolean> {
     const row = await this.prisma.db.token.findUnique({ where: { chain_address: { chain: chain as Chain, address } }, select: { launchpad: true, pairAddress: true, migratedAt: true } });
     if (!row) return false;
     // pump.fun's API is the best source for curve coins; if it pushes back we use GeckoTerminal for a minute
@@ -172,7 +172,8 @@ export class IntelService implements OnModuleInit {
         );
         return true;
       }
-      if (!row.pairAddress) return false;
+      // GeckoTerminal is shared with charts: only for someone actually looking at the coin
+      if (!row.pairAddress || !opts.allowGecko) return false;
       const trades = await geckoterminal.trades(chain, row.pairAddress);
       await this.ingest(
         chain,
@@ -195,7 +196,7 @@ export class IntelService implements OnModuleInit {
   /** Someone opened this coin — keep its ledger fresh while they look. */
   async touch(chain: ChainId, address: string) {
     await this.redis.client.zadd('intel:viewed', Date.now(), `${chain}|${address}`);
-    if (await this.redis.allow(`ib:${chain}:${address}`, 1, 8)) await this.backfill(chain, address);
+    if (await this.redis.allow(`ib:${chain}:${address}`, 1, 8)) await this.backfill(chain, address, { allowGecko: true });
   }
 
   /**
@@ -215,11 +216,14 @@ export class IntelService implements OnModuleInit {
       select: { chain: true, address: true },
     });
     const queue = [...viewed, ...hot.map((t) => [t.chain as ChainId, t.address] as [ChainId, string])];
-    let done = 0;
+    // pump.fun only, at most 2 calls per pass whatever happens; nothing while it's cooling down
+    if (await this.redis.client.exists('intel:cooldown')) return;
+    let tries = 0;
     for (const [chain, address] of queue) {
-      if (done >= 2) break;
+      if (tries >= 2) break;
       if (!(await this.redis.allow(`ib:${chain}:${address}`, 1, 25))) continue;
-      if (await this.backfill(chain, address)) done++;
+      tries++;
+      await this.backfill(chain, address);
     }
   }
 

@@ -1,5 +1,7 @@
 export function fmtUsd(n: number | null | undefined, opts: { compact?: boolean } = {}): string {
   if (n == null || !Number.isFinite(n)) return '—';
+  // fake / broken tokens report absurd values — never print a 30-digit number
+  if (Math.abs(n) >= 1e15) return n < 0 ? '−∞' : '∞';
   if (opts.compact !== false && Math.abs(n) >= 1000) {
     const units: [number, string][] = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
     for (const [v, u] of units) if (Math.abs(n) >= v) return `$${(n / v).toFixed(n / v >= 100 ? 0 : 1)}${u}`;

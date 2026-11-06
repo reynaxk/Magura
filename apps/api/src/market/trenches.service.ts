@@ -261,7 +261,10 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     const friendCount = new Map<string, number>();
     for (const f of friends) friendCount.set(f.tokenAddress, (friendCount.get(f.tokenAddress) ?? 0) + 1);
     const devs = await this.devStats(pool, filter);
+    // a memecoin worth more than $500B is a broken or fake contract — keep it out of Trenches
+    const sane = (t: Token) => (t.marketCapUsd ?? 0) < 5e11 && (t.volumeUsd ?? 0) < 5e11;
     const matched = pool.filter((t) =>
+      sane(t) &&
       matchesFilter(
         factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendCount.has(t.address), friendCount.get(t.address) ?? 0, t.creator ? devs.get(`${t.chain}|${t.creator}`) : null),
         filter,

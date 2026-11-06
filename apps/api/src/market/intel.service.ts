@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { geckoterminal, pumpTrades, solanaRpc, type LaunchTrade } from '@magura/chains';
+import { PumpLogsFeed, geckoterminal, pumpTrades, solanaRpc, type LaunchTrade, type PumpLogTrade } from '@magura/chains';
 import type { Chain } from '@magura/db';
 import {
   BUNDLE_WINDOW_MS,
@@ -22,7 +22,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 
 /** Pump.fun and the other curve launchpads mint a fixed 1B supply. */
 const CURVE_SUPPLY = 1_000_000_000;
-const TTL = 3 * 24 * 3600;
+const TTL = 24 * 3600;
 const ledgerKey = (c: string, a: string) => `il:${c}:${a}`;
 const metaKey = (c: string, a: string) => `im:${c}:${a}`;
 const seenKey = (c: string, a: string) => `is:${c}:${a}`;
@@ -47,12 +47,49 @@ export class IntelService implements OnModuleInit {
   private migrateHandlers: MigrateHandler[] = [];
   /** coins with new trades since the last fresh-wallet pass */
   private active = new Set<string>();
+  /** pump.fun mints we keep ledgers for / know we don't (bounded) */
+  private known = new Set<string>();
+  private unknown = new Set<string>();
+  private logs: PumpLogsFeed | null = null;
+  private liveCount = 0;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly rt: RealtimeService,
   ) {}
+
+  /** True when the on-chain pump.fun feed delivered something in the last 30s. */
+  get liveFeedHealthy() {
+    return !!this.logs && Date.now() - this.logs.lastMessageAt < 30_000;
+  }
+
+  /** Start the on-chain pump.fun trade feed (worker only). */
+  startPumpLogs() {
+    if (this.logs) return;
+    this.logs = new PumpLogsFeed((t) => void this.liveTrade(t).catch(() => undefined));
+    this.logs.start();
+    this.log.log('pump.fun on-chain trade feed started');
+    setInterval(() => {
+      if (this.liveCount) this.log.log(`pump.fun feed: ${this.liveCount} trades/min ingested`);
+      this.liveCount = 0;
+    }, 60_000).unref();
+  }
+
+  /** A trade from the on-chain feed: only coins we track (launched in the last day). */
+  private async liveTrade(t: PumpLogTrade) {
+    if (this.unknown.has(t.mint)) return;
+    if (!this.known.has(t.mint)) {
+      const row = await this.prisma.db.token.findUnique({ where: { chain_address: { chain: 'solana', address: t.mint } }, select: { createdAt: true } });
+      const track = !!row && Date.now() - row.createdAt.getTime() < 24 * 3600_000;
+      const set = track ? this.known : this.unknown;
+      if (set.size > 60_000) set.clear();
+      set.add(t.mint);
+      if (!track) return;
+    }
+    this.liveCount++;
+    await this.ingest('solana', t.mint, [{ wallet: t.wallet, side: t.side, tokenAmount: t.tokenAmount, nativeAmount: t.solAmount, signature: t.signature, at: t.at, slot: t.slot }], true);
+  }
 
   onModuleInit() {
     this.onDevSell(async (e) => {
@@ -83,6 +120,10 @@ export class IntelService implements OnModuleInit {
       .hset(k, { launchedAt: String(at.getTime()), creator: creator ?? '', supply: curve ? String(CURVE_SUPPLY) : '', buyers: '0' })
       .expire(k, TTL)
       .exec();
+    if (chain === 'solana') {
+      this.unknown.delete(address);
+      this.known.add(address);
+    }
   }
 
   /** One trade from the live stream. */
@@ -128,7 +169,8 @@ export class IntelService implements OnModuleInit {
     let changed = false;
     let devSold: { wallet: string; soldAll: boolean; at: Date } | null = null;
     for (const t of sorted) {
-      if (t.signature) {
+      // backfills can overlap each other; the live feed never repeats a trade
+      if (t.signature && !live) {
         const fresh = await this.redis.client.sadd(sk, t.signature);
         if (!fresh) continue;
       }
@@ -153,7 +195,7 @@ export class IntelService implements OnModuleInit {
     } else if (devSold) {
       await this.prisma.db.token.updateMany({ where: { chain: chain as Chain, address, devSoldAt: null }, data: { devSoldAt: devSold.at } }).catch(() => undefined);
     }
-    if (devSold || !live || (await this.redis.allow(`intel:${chain}:${address}`, 1, 2))) await this.recompute(chain, address);
+    if (devSold || !live || (await this.redis.allow(`intel:${chain}:${address}`, 1, 5))) await this.recompute(chain, address);
   }
 
   /** Pull recent trades for a coin: pump.fun's API (with slots) for pump coins, GeckoTerminal otherwise. */
@@ -197,6 +239,7 @@ export class IntelService implements OnModuleInit {
 
   /** Someone opened this coin — keep its ledger fresh while they look. */
   async touch(chain: ChainId, address: string) {
+    if (chain === 'solana' && this.liveFeedHealthy && this.known.has(address)) return; // already streaming
     await this.redis.client.zadd('intel:viewed', Date.now(), `${chain}|${address}`);
     if (await this.redis.allow(`ib:${chain}:${address}`, 1, 8)) await this.backfill(chain, address, { allowGecko: true });
   }
@@ -207,7 +250,7 @@ export class IntelService implements OnModuleInit {
    */
   @Interval(6_000)
   async backfillPass() {
-    if (env.NODE_ENV === 'test' || env.TRENCHES_WORKER !== '1') return;
+    if (env.NODE_ENV === 'test' || env.TRENCHES_WORKER !== '1' || this.liveFeedHealthy) return;
     const since = Date.now() - 120_000;
     const viewed = (await this.redis.client.zrangebyscore('intel:viewed', since, '+inf')).map((k) => k.split('|') as [ChainId, string]);
     await this.redis.client.zremrangebyscore('intel:viewed', 0, since);

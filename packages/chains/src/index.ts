@@ -8,6 +8,7 @@ export { goplus, type TopHolder } from './security/goplus';
 export * from './launchpads/types';
 export { PumpFunFeed, pumpBondingPct, pumpPortalTradeTx, pumpMetadata, pumpTrades, type PumpTrade } from './launchpads/pumpfun';
 export { ClankerFeed } from './launchpads/clanker';
+export { PumpLogsFeed, decodePumpTrade, PUMP_PROGRAM, type PumpLogTrade } from './launchpads/pump-logs';
 export { EvmFactoryFeed, evmFactoryFeedsFromEnv } from './launchpads/evm-factory';
 export { polymarket } from './extras/polymarket';
 export { fetchNews, NEWS_SOURCES } from './extras/news';

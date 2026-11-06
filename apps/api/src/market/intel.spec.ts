@@ -68,3 +68,24 @@ test('holder rows: realized + unrealized PnL', () => {
   assert.equal(row.unrealizedNative, 0.5); // 50 left worth 1, cost 0.5
   assert.equal(sortHolders([row], 'holding').length, 1);
 });
+
+test('pump.fun TradeEvent log decodes', async () => {
+  const { createHash } = await import('node:crypto');
+  const { decodePumpTrade } = await import('@magura/chains');
+  const b = Buffer.alloc(8 + 32 + 8 + 8 + 1 + 32 + 8 + 16);
+  createHash('sha256').update('event:TradeEvent').digest().copy(b, 0, 0, 8);
+  b.fill(7, 8, 40); // mint
+  b.writeBigUInt64LE(1_500_000_000n, 40); // 1.5 SOL
+  b.writeBigUInt64LE(42_000_000_000n, 48); // 42,000 tokens
+  b[56] = 1; // buy
+  b.fill(9, 57, 89); // user
+  b.writeBigInt64LE(1_790_000_000n, 89);
+  const t = decodePumpTrade(b.toString('base64'));
+  assert.ok(t);
+  assert.equal(t.side, 'buy');
+  assert.equal(t.solAmount, 1.5);
+  assert.equal(t.tokenAmount, 42_000);
+  assert.equal(t.at.getTime(), 1_790_000_000_000);
+  assert.notEqual(t.mint, t.wallet);
+  assert.equal(decodePumpTrade(Buffer.alloc(120).toString('base64')), null);
+});

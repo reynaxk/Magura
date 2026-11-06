@@ -63,6 +63,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
         this.log.warn(`feed ${f.id} failed to start: ${(e as Error).message}`);
       }
     }
+    this.intel.startPumpLogs();
     this.every(30_000, () => this.refreshMajors());
     this.every(30_000, () => this.pollNewPools());
     this.every(12_000, () => this.enrichMarket());

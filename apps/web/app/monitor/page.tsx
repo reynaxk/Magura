@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fmtAge, fmtUsd, type SignalDTO, type SignalKind } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSocket, useSocketEvent } from '@/lib/socket';
+import { useSession } from '@/lib/session';
 import { useInstantTrade } from '@/lib/trade';
 import { usePref } from '@/lib/prefs';
 import { soundFor } from '@/lib/sounds';
@@ -14,6 +15,7 @@ import { SmartFlow } from '@/components/smart-flow';
 import { Avatar, Empty, Icon, Svg } from '@/components/ui';
 
 const KINDS: { id: SignalKind; label: string; color: string }[] = [
+  { id: 'tracked', label: 'Tracked', color: '#E9ECF2' },
   { id: 'smart_buy', label: 'Smart buy', color: '#2FE39A' },
   { id: 'whale_buy', label: 'Whale buy', color: '#4FD1C5' },
   { id: 'dev_sell', label: 'Dev sell', color: '#FF5C7A' },
@@ -70,15 +72,19 @@ export default function MonitorPage() {
   const qc = useQueryClient();
   const [on, setOn] = usePref<SignalKind[]>('monitor-kinds', KINDS.map((k) => k.id));
   const [sound, setSound] = usePref<boolean>('monitor-sound', false);
+  const { me } = useSession();
   const q = useQuery({ queryKey: ['signals'], queryFn: () => api<SignalDTO[]>('/market/signals'), refetchInterval: 60_000 });
+  // your tracked wallets' trades, merged into the stream
+  const mine = useQuery({ queryKey: ['signals-tracked'], queryFn: () => api<SignalDTO[]>('/market/signals/tracked'), enabled: !!me, refetchInterval: 60_000 });
   useEffect(() => {
     socket?.emit('trenches:subscribe', ['solana', 'base', 'bsc', 'ethereum']);
   }, [socket]);
   useSocketEvent('signal', (s) => {
-    qc.setQueryData<SignalDTO[]>(['signals'], (xs = []) => [s, ...xs.filter((x) => x.id !== s.id)].slice(0, 300));
+    const key = s.kind === 'tracked' ? ['signals-tracked'] : ['signals'];
+    qc.setQueryData<SignalDTO[]>(key, (xs = []) => [s, ...xs.filter((x) => x.id !== s.id)].slice(0, 300));
     if (sound && on.includes(s.kind) && (s.kind === 'smart_buy' || s.kind === 'whale_buy' || s.kind === 'dev_sell')) soundFor(s.kind === 'dev_sell' ? 'devsell' : 'friend');
   });
-  const list = (q.data ?? []).filter((s) => on.includes(s.kind));
+  const list = [...(mine.data ?? []), ...(q.data ?? [])].filter((s) => on.includes(s.kind)).sort((a, b) => +new Date(b.at) - +new Date(a.at));
   const toggle = (k: SignalKind) => setOn(on.includes(k) ? on.filter((x) => x !== k) : [...on, k]);
 
   return (

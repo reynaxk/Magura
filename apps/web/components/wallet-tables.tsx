@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CHAINS, WALLET_TAGS, fmtAge, fmtUsd, tagMeta, type ChainId, type HolderRow, type HolderSort, type TokenIntel, type WalletTag } from '@magura/shared';
 import { api } from '@/lib/api';
+import { useSession } from '@/lib/session';
+import { toast } from './toaster';
 import { Avatar, Empty, Icon } from './ui';
 import { DevSnipe } from './orders';
 
@@ -17,6 +19,26 @@ interface WalletsResponse {
 
 const short = (a: string) => (a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a);
 const FILTER_TAGS: (WalletTag | 'all')[] = ['all', 'smart', 'dev', 'sniper', 'bundler', 'insider', 'fresh', 'whale', 'early', 'magura'];
+
+/** Hover a wallet row → track it (label = short address; rename later in the tracker). */
+function TrackButton({ wallet }: { wallet: string }) {
+  const { me, login } = useSession();
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (!me) return login();
+        await api('/me/tracked', { body: { address: wallet, label: `${wallet.slice(0, 4)}…${wallet.slice(-4)}` } }).catch(() => undefined);
+        setDone(true);
+        toast({ title: 'Tracking wallet', body: 'You will see its trades live in Monitor and as alerts', tone: 'lime' });
+      }}
+      className={`rounded-md border px-1.5 text-[10px] font-semibold opacity-0 transition group-hover:opacity-100 ${done ? 'border-lime-line text-lime opacity-100' : 'border-line-3 text-muted hover:text-text'}`}
+    >
+      {done ? 'Tracking' : '+ Track'}
+    </button>
+  );
+}
 
 export function TagPill({ tag }: { tag: WalletTag }) {
   const m = tagMeta(tag);
@@ -118,6 +140,7 @@ export function WalletTable({ chain, address, sort, fallback }: { chain: ChainId
                     <span className="num text-[10px] text-faint">
                       {r.buys}/{r.sells}
                     </span>
+                    <TrackButton wallet={r.wallet} />
                   </span>
                 </td>
                 <td className="px-2 text-right">

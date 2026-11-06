@@ -48,6 +48,12 @@ export function Toaster() {
     qc.invalidateQueries({ queryKey: ['notifications'] });
   });
   useSocketEvent('coin:devsell', () => soundFor('devsell'));
+  // a wallet you track traded — only tracked signals reach your personal room
+  useSocketEvent('signal', (sig) => {
+    if (sig.kind !== 'tracked') return;
+    push({ title: `${sig.label ?? 'Tracked wallet'} ${sig.side === 'buy' ? 'bought' : 'sold'} $${sig.symbol}`, body: sig.detail, href: `/t/${sig.chain}/${sig.address}` });
+    soundFor('friend');
+  });
   useSocketEvent('copy:confirm', (p) => {
     push({ title: `Confirm copy of @${p.leader}`, body: `${p.side} ${p.symbol} · ~$${p.amountUsd.toFixed(0)}`, href: '/portfolio', tone: 'lime' });
     qc.invalidateQueries({ queryKey: ['copy-pending'] });

@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import type { Chain } from '@magura/db';
 import type { ChainId, SignalDTO, SignalKind } from '@magura/shared';
 import { PrismaService, RedisService } from '../common/infra.module';
@@ -18,6 +19,8 @@ const SMART_MIN_SOL = 0.3;
 @Injectable()
 export class SignalsService implements OnModuleInit {
   private tokenCache = new Map<string, { symbol: string; imageUrl: string | null; marketCapUsd: number | null; at: number }>();
+  /** Solana wallets users track → who tracks them and under what name */
+  private tracked = new Map<string, { userId: string; label: string }[]>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -28,7 +31,9 @@ export class SignalsService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
+    void this.refreshTracked();
     this.intel.onFill((f) => {
+      if (this.tracked.has(f.wallet) && Date.now() - f.at.getTime() < 120_000) void this.trackedFill(f.chain, f.mint, f.wallet, f.side, f.native);
       if (f.side !== 'buy') return;
       if (f.native >= WHALE_SOL) void this.push('whale_buy', f.chain, f.mint, { native: f.native, wallet: f.wallet, detail: `Bought ${f.native.toFixed(2)} SOL in one trade` }, 20);
       else if (f.native >= SMART_MIN_SOL && this.smart.isSmart(f.wallet))
@@ -41,6 +46,43 @@ export class SignalsService implements OnModuleInit {
       if (ageMs < 90_000 && (e.intel.bundlerPct ?? 0) >= 20 && e.intel.bundlers >= 3)
         void this.push('bundled_launch', e.chain, e.address, { detail: `${e.intel.bundlers} bundlers hold ${Math.round(e.intel.bundlerPct ?? 0)}% at launch` }, 3600);
     });
+  }
+
+  @Interval(60_000)
+  async refreshTracked() {
+    const rows = await this.prisma.db.trackedWallet.findMany({ where: { chainKind: 'svm' }, select: { userId: true, address: true, label: true } });
+    const m = new Map<string, { userId: string; label: string }[]>();
+    for (const r of rows) m.set(r.address, [...(m.get(r.address) ?? []), { userId: r.userId, label: r.label }]);
+    this.tracked = m;
+  }
+
+  /** A wallet someone tracks just traded → straight to them (toast + Monitor → Tracked). */
+  private async trackedFill(chain: ChainId, mint: string, wallet: string, side: 'buy' | 'sell', native: number) {
+    const t = await this.token(chain, mint);
+    if (!t) return;
+    for (const w of this.tracked.get(wallet) ?? []) {
+      const s: SignalDTO = {
+        id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        kind: 'tracked',
+        chain,
+        address: mint,
+        symbol: t.symbol,
+        imageUrl: t.imageUrl,
+        marketCapUsd: t.marketCapUsd,
+        native,
+        wallet,
+        label: w.label,
+        side,
+        detail: `${w.label} ${side === 'buy' ? 'bought' : 'sold'} ${native.toFixed(2)} SOL`,
+        at: new Date().toISOString(),
+      };
+      this.rt.toUser(w.userId, 'signal', s);
+      await this.redis.client.multi().lpush(`trk:${w.userId}`, JSON.stringify(s)).ltrim(`trk:${w.userId}`, 0, 199).expire(`trk:${w.userId}`, 7 * 86400).exec();
+    }
+  }
+
+  async trackedFor(userId: string): Promise<SignalDTO[]> {
+    return (await this.redis.client.lrange(`trk:${userId}`, 0, 199)).map((r) => JSON.parse(r) as SignalDTO);
   }
 
   /** Called by Trenches when DexScreener reports a payment. */

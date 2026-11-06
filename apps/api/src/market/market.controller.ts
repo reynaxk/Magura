@@ -158,6 +158,12 @@ export class MarketController {
     return this.signals.recent(list.length ? list : null);
   }
 
+  /** Trades by wallets you track (Monitor → Tracked). */
+  @Get('signals/tracked')
+  trackedSignals(@CurrentUser() user: User) {
+    return this.signals.trackedFor(user.id);
+  }
+
   /** Wallet leaderboard (CopyTrade → Rank). */
   @Public()
   @Get('smart/rank')

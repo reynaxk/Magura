@@ -197,7 +197,7 @@ export interface HuntToken {
 }
 
 /** Live market signals (Monitor). */
-export type SignalKind = 'whale_buy' | 'smart_buy' | 'dev_sell' | 'migrated' | 'dex_paid' | 'bundled_launch' | 'volume_spike';
+export type SignalKind = 'whale_buy' | 'smart_buy' | 'dev_sell' | 'migrated' | 'dex_paid' | 'bundled_launch' | 'volume_spike' | 'tracked';
 export interface SignalDTO {
   id: string;
   kind: SignalKind;
@@ -211,5 +211,8 @@ export interface SignalDTO {
   wallet?: string | null;
   /** short human detail, e.g. "6 bundlers hold 24%" */
   detail: string;
+  /** tracked-wallet signals: your label for the wallet, and buy / sell */
+  label?: string;
+  side?: 'buy' | 'sell';
   at: string;
 }

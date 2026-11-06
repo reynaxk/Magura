@@ -45,6 +45,7 @@ export interface WalletFill {
   at: Date;
 }
 export type FillHandler = (f: WalletFill) => void;
+export type LaunchHandler = (e: { chain: ChainId; address: string; creator: string; symbol: string }) => void | Promise<void>;
 export type MigrateHandler = (e: { chain: ChainId; address: string; at: Date }) => void | Promise<void>;
 export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: string; soldAll: boolean; at: Date }) => void | Promise<void>;
 
@@ -58,6 +59,16 @@ export class IntelService implements OnModuleInit {
   private devSellHandlers: DevSellHandler[] = [];
   private migrateHandlers: MigrateHandler[] = [];
   private fillHandlers: FillHandler[] = [];
+  private launchHandlers: LaunchHandler[] = [];
+
+  /** A coin was just created (dev snipe listens). */
+  onLaunched(fn: LaunchHandler) {
+    this.launchHandlers.push(fn);
+  }
+
+  launched(chain: ChainId, address: string, creator: string, symbol: string) {
+    for (const h of this.launchHandlers) void Promise.resolve(h({ chain, address, creator, symbol })).catch(() => undefined);
+  }
 
   onFill(fn: FillHandler) {
     this.fillHandlers.push(fn);

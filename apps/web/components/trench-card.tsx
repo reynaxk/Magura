@@ -107,6 +107,7 @@ export const TrenchCard = memo(function TrenchCard({
           <div className="flex min-w-0 items-center gap-1.5">
             <span className={`${s.title} font-semibold`}>{t.symbol}</span>
             <span className="truncate text-xs text-muted">{t.name}</span>
+            {t.dexPaid && <span title="Paid on DexScreener" className="shrink-0 rounded-[5px] bg-sky/15 px-1 text-[9.5px] font-bold text-sky">DS</span>}
             {t.devSold && (
               <span title="The dev sold" className="shrink-0 rounded-[5px] bg-down-dim px-1 text-[9.5px] font-bold uppercase tracking-wide text-down-2">
                 dev sold

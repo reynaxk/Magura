@@ -63,6 +63,20 @@ export interface DexOrders {
 }
 
 export const dexscreener = {
+  /** Tokens that just paid for a DexScreener profile or boost (latest ~30 each). */
+  async latestPaid(): Promise<{ chain: ChainId; address: string }[]> {
+    const [profiles, boosts] = await Promise.all([
+      fetchJson<{ chainId: string; tokenAddress: string }[]>(`${BASE}/token-profiles/latest/v1`, { retries: 0 }).catch(() => []),
+      fetchJson<{ chainId: string; tokenAddress: string }[]>(`${BASE}/token-boosts/latest/v1`, { retries: 0 }).catch(() => []),
+    ]);
+    const out: { chain: ChainId; address: string }[] = [];
+    for (const r of [...(Array.isArray(profiles) ? profiles : []), ...(Array.isArray(boosts) ? boosts : [])]) {
+      const chain = Object.values(CHAINS).find((c) => c.dexscreener === r.chainId)?.id;
+      if (chain && r.tokenAddress) out.push({ chain, address: chain === 'solana' ? r.tokenAddress : r.tokenAddress.toLowerCase() });
+    }
+    return out;
+  },
+
   /** Has the team paid DexScreener (profile, ads) and is it a community takeover? */
   async orders(chain: ChainId, address: string): Promise<DexOrders> {
     const rows = await fetchJson<{ type: string; status: string }[]>(`${BASE}/orders/v1/${CHAINS[chain].dexscreener}/${address}`, { retries: 0, timeoutMs: 5000 });

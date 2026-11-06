@@ -11,7 +11,7 @@ import { TradingService } from './trading.service';
 import { BUY_KINDS, EVENT_KINDS, shouldArm, shouldFire } from './orders.rules';
 import { IntelService } from '../market/intel.service';
 
-export type OrderKind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell';
+export type OrderKind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell' | 'dev_snipe';
 
 export const ORDER_NAME: Record<OrderKind, string> = {
   tp: 'Take profit',
@@ -24,6 +24,7 @@ export const ORDER_NAME: Record<OrderKind, string> = {
   dev_sell_buy: 'Buy on dev sell',
   migrate_buy: 'Buy on migration',
   migrate_sell: 'Sell on migration',
+  dev_snipe: 'Dev snipe',
 };
 const isBuy = (k: string) => (BUY_KINDS as readonly string[]).includes(k);
 
@@ -69,6 +70,11 @@ export class OrdersService implements OnModuleInit {
     // event-driven automations
     this.intel.onDevSell((e) => this.fireEvent(e.chain, e.address, ['dev_sell', 'dev_sell_buy']));
     this.intel.onMigrate((e) => this.fireEvent(e.chain, e.address, ['migrate_buy', 'migrate_sell']));
+    // dev snipe: the watched wallet launched a new coin → buy it
+    this.intel.onLaunched(async (e) => {
+      const rules = await this.prisma.db.orderRule.findMany({ where: { status: 'active', kind: 'dev_snipe', chain: e.chain, tokenAddress: e.creator } });
+      for (const r of rules) await this.fire({ ...r, tokenAddress: e.address, tokenSymbol: e.symbol });
+    });
   }
 
   private async fireEvent(chain: ChainId, address: string, kinds: string[]) {

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CHAINS, WALLET_TAGS, fmtAge, fmtUsd, tagMeta, type ChainId, type HolderRow, type HolderSort, type TokenIntel, type WalletTag } from '@magura/shared';
 import { api } from '@/lib/api';
 import { Avatar, Empty, Icon } from './ui';
+import { DevSnipe } from './orders';
 
 interface WalletsResponse {
   rows: HolderRow[] | null;
@@ -183,6 +184,7 @@ export function DevReportCard({ chain, creator }: { chain: ChainId; creator: str
         <TagPill tag="dev" />
         {verdict && <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${verdict.c}`}>{verdict.t}</span>}
       </div>
+      <DevSnipe chain={chain} creator={creator} />
       <div className="num grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           ['Launched', d?.launched ?? '—'],

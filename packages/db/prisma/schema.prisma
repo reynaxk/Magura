@@ -209,6 +209,8 @@ model Token {
   athMarketCapUsd Float?
   /// when the dev last sold (drives "sell on dev sell" automations)
   devSoldAt    DateTime?
+  /// team paid DexScreener for a profile / boost
+  dexPaid      Boolean  @default(false)
 
   @@id([chain, address])
   @@index([creator])
@@ -298,7 +300,8 @@ model OrderRule {
   chain        Chain
   tokenAddress String
   tokenSymbol  String
-  /// tp | sl | trail | trail_tp | limit_buy | dca | dev_sell | dev_sell_buy | migrate_buy | migrate_sell
+  /// tp | sl | trail | trail_tp | limit_buy | dca | dev_sell | dev_sell_buy | migrate_buy | migrate_sell | dev_snipe
+  /// dev_snipe: tokenAddress holds the dev wallet to watch
   kind         String
   /// tp: +% above entry · sl: −% below entry (stored negative) · trail: % drop from the peak
   triggerPct   Float?

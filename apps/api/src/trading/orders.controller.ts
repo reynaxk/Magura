@@ -10,7 +10,7 @@ const zOrder = z
     chain: zChain,
     tokenAddress: z.string().min(20).max(80),
     tokenSymbol: z.string().min(1).max(20),
-    kind: z.enum(['tp', 'sl', 'trail', 'trail_tp', 'limit_buy', 'dca', 'dev_sell', 'dev_sell_buy', 'migrate_buy', 'migrate_sell']),
+    kind: z.enum(['tp', 'sl', 'trail', 'trail_tp', 'limit_buy', 'dca', 'dev_sell', 'dev_sell_buy', 'migrate_buy', 'migrate_sell', 'dev_snipe']),
     triggerPct: z.number().min(1).max(10_000).optional(),
     triggerMcUsd: z.number().positive().max(1e13).optional(),
     sellPct: z.number().int().min(1).max(100).optional(),
@@ -30,6 +30,7 @@ const zOrder = z
           return !!o.buyAmount && !!o.intervalSec && !!o.slices;
         case 'dev_sell_buy':
         case 'migrate_buy':
+        case 'dev_snipe':
           return !!o.buyAmount;
         case 'dev_sell':
         case 'migrate_sell':

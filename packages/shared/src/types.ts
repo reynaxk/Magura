@@ -47,6 +47,7 @@ export interface TrenchToken {
   hasTelegram?: boolean;
   hasWebsite?: boolean;
   devSold?: boolean;
+  dexPaid?: boolean;
   /** Social layer */
   chatCount: number;
   friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];
@@ -189,6 +190,7 @@ export interface HuntToken {
   hasWebsite?: boolean;
   launchpad?: string | null;
   devSold?: boolean;
+  dexPaid?: boolean;
   chatCount: number;
   friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];
   hotScore: number;

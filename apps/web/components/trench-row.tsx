@@ -55,6 +55,7 @@ export const TrenchRow = memo(function TrenchRow({
           {t.hasX && <Svg d="M4 4l16 16M20 4L4 20" size={10} color="#7A8397" />}
           {t.hasTelegram && <Svg d="M21 4L3 11l6 2 2 6 3-4 5 4z" size={10} color="#7A8397" />}
           {t.hasWebsite && <Svg d={Icon.globe} size={10} color="#7A8397" />}
+          {t.dexPaid && <span className="shrink-0 rounded bg-sky/15 px-1 text-[9px] font-bold text-sky">DS</span>}
           {(t.devSold || i?.devSoldAll) && <span className="shrink-0 rounded bg-down-dim px-1 text-[9px] font-bold text-down-2">DEV SOLD</span>}
           {t.chatCount > 0 && (
             <span className="num flex shrink-0 items-center gap-0.5 text-[10px] text-text-2">

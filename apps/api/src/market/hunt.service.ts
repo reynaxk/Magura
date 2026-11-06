@@ -154,6 +154,7 @@ export class HuntService {
       hasWebsite: t.hasWebsite,
       launchpad: t.launchpad,
       devSold: !!t.devSoldAt,
+      dexPaid: t.dexPaid,
       chatCount,
       friendsBought: friends.filter((f) => f.tokenAddress === t.address).map((f) => ({ userId: f.user.id, handle: f.user.handle, avatarUrl: f.user.avatarUrl })),
       hotScore: Math.round(hotScore * 10) / 10,

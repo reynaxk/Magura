@@ -68,6 +68,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     this.every(30_000, () => this.pollNewPools());
     this.every(12_000, () => this.enrichMarket());
     this.every(20_000, () => this.enrichRisk());
+    this.every(60_000, () => this.markDexPaid());
   }
 
   onModuleDestroy() {
@@ -103,6 +104,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     };
     const stage = stageFor({ ...data, liquidityUsd: existing?.liquidityUsd ?? null, createdAt: existing?.createdAt ?? e.at });
     // wallet ledger (dev / snipers / bundlers …) is updated on every trade, before the write throttle
+    if (e.type === 'created' && e.creator) this.intel.launched(e.chain, e.address, e.creator, e.symbol ?? '?');
     if (e.type === 'created') {
       const curve = e.launchpad === 'pumpfun' || e.launchpad === 'fourmeme' || e.launchpad === 'flap' || e.launchpad === 'pons';
       await this.intel.onLaunch(e.chain, e.address, e.creator ?? null, e.at, curve);
@@ -232,6 +234,17 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** DexScreener's latest paid profiles / boosts → DEX PAID badge. */
+  private async markDexPaid() {
+    const paid = await dexscreener.latestPaid();
+    for (const chain of CHAIN_IDS) {
+      const addrs = paid.filter((p) => p.chain === chain).map((p) => p.address);
+      if (!addrs.length) continue;
+      const r = await this.prisma.db.token.updateMany({ where: { chain, address: { in: addrs }, dexPaid: false }, data: { dexPaid: true } });
+      if (r.count) for (const a of addrs) this.rt.toRoom(`trenches:${chain}`, 'trenches:update', { chain, address: a, dexPaid: true });
+    }
+  }
+
   /** GoPlus risk for tokens that don't have it yet (rate-limited). */
   private async enrichRisk() {
     const tokens = await this.prisma.db.token.findMany({
@@ -341,6 +354,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       hasTelegram: t.hasTelegram,
       hasWebsite: t.hasWebsite,
       devSold: !!t.devSoldAt,
+      dexPaid: t.dexPaid,
       chatCount: counts[roomIds.coin(t.chain, t.address)] ?? 0,
       friendsBought: friends
         .filter((f) => f.tokenAddress === t.address)

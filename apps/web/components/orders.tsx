@@ -8,7 +8,7 @@ import { useSession } from '@/lib/session';
 import { useInstantTrade } from '@/lib/trade';
 import { toast } from './toaster';
 
-type Kind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell';
+type Kind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell' | 'dev_snipe';
 interface OrderRule {
   id: string;
   kind: Kind;
@@ -36,8 +36,9 @@ const NAME: Record<Kind, string> = {
   dev_sell_buy: 'Buy on dev sell',
   migrate_buy: 'Buy on migration',
   migrate_sell: 'Sell on migration',
+  dev_snipe: 'Dev snipe',
 };
-const BUY_KINDS: Kind[] = ['limit_buy', 'dca', 'dev_sell_buy', 'migrate_buy'];
+const BUY_KINDS: Kind[] = ['limit_buy', 'dca', 'dev_sell_buy', 'migrate_buy', 'dev_snipe'];
 const every = (s: number) => (s < 3600 ? `${Math.round(s / 60)}m` : `${(s / 3600).toFixed(s % 3600 ? 1 : 0)}h`);
 
 function describe(o: OrderRule, native: string) {
@@ -60,6 +61,8 @@ function describe(o: OrderRule, native: string) {
       return `Buy ${o.buyAmount} ${native} when it migrates to a DEX`;
     case 'migrate_sell':
       return `Sell ${o.sellPct}% when it migrates`;
+    case 'dev_snipe':
+      return `Buy ${o.buyAmount} ${native} of this dev's next launch`;
     default:
       return `Sell ${o.sellPct}% at ${o.kind === 'tp' ? '+' : ''}${o.triggerPct}%`;
   }
@@ -370,6 +373,59 @@ export function ActiveOrders({ chain, token, symbol }: { chain: ChainId; token: 
             </button>
           </div>
         ))}
+    </div>
+  );
+}
+
+/** Dev snipe: buy the next coin this wallet creates, the second it launches. */
+export function DevSnipe({ chain, creator }: { chain: ChainId; creator: string }) {
+  const { me, login } = useSession();
+  const qc = useQueryClient();
+  const native = CHAINS[chain].nativeSymbol;
+  const [amount, setAmount] = useState('0.2');
+  const active = useQuery({
+    queryKey: ['orders', chain, creator],
+    queryFn: () => api<OrderRule[]>(`/orders?chain=${chain}&token=${creator}`),
+    enabled: !!me,
+  });
+  const armed = (active.data ?? []).find((o) => o.kind === 'dev_snipe');
+  const create = useMutation({
+    mutationFn: () => api('/orders', { body: { orders: [{ chain, tokenAddress: creator, tokenSymbol: 'DEV', kind: 'dev_snipe', buyAmount: amount, slippageBps: 3000 }] } }),
+    onSuccess: () => {
+      toast({ title: 'Dev snipe armed', body: `Magura buys ${amount} ${native} of this dev's next coin the moment it launches`, tone: 'lime' });
+      qc.invalidateQueries({ queryKey: ['orders', chain, creator] });
+    },
+    onError: (e) => toast({ title: 'Could not arm snipe', body: (e as Error).message.replace(/_/g, ' ') }),
+  });
+  const cancel = useMutation({
+    mutationFn: (id: string) => api(`/orders/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders', chain, creator] }),
+  });
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-line-2 bg-raised p-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-semibold">Snipe this dev&apos;s next coin</span>
+        {armed && <span className="rounded bg-lime-dim px-1.5 text-[10px] font-bold text-lime">ARMED</span>}
+      </div>
+      {armed ? (
+        <div className="flex items-center gap-2 text-[12px] text-text-2">
+          Buying {armed.buyAmount} {native} on their next launch
+          <button onClick={() => cancel.mutate(armed.id)} className="ml-auto text-[11px] text-faint hover:text-down-2">
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <label className="flex h-9 flex-1 items-center gap-1 rounded-lg border border-line-2 bg-bg px-2.5">
+            <input aria-label="Snipe amount" className="num w-full bg-transparent text-sm outline-none" inputMode="decimal" value={amount} onChange={(e) => setAmount(num(e.target.value))} />
+            <span className="text-[11px] text-faint">{native}</span>
+          </label>
+          <button onClick={() => (me ? create.mutate() : login())} disabled={create.isPending || !amount} className="btn-lime h-9 px-3 text-xs">
+            Arm snipe
+          </button>
+        </div>
+      )}
+      <span className="text-[10.5px] text-faint">Fires once, from your delegated wallet (or asks you to confirm). Works for launches on Pump.fun.</span>
     </div>
   );
 }

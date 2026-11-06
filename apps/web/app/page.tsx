@@ -157,6 +157,7 @@ export default function HuntPage() {
                               <span className="flex items-center gap-1.5 font-semibold">
                                 {t.symbol}
                                 <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
+                                {t.dexPaid && <span className="rounded bg-sky/15 px-1 text-[9px] font-bold text-sky">DS</span>}
                                 {t.devSold && <span className="rounded bg-down-dim px-1 text-[9px] font-bold text-down-2">DEV SOLD</span>}
                               </span>
                               <span className="flex items-center gap-1.5 text-[10.5px] text-muted">

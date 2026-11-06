@@ -10,6 +10,21 @@ export function AppearanceSettings() {
   return (
     <>
       <h2 className="text-lg font-semibold">Appearance</h2>
+      <div className="flex items-center gap-4 rounded-2xl border border-line-2 bg-raised p-4">
+        <span className="flex flex-1 flex-col gap-0.5">
+          <span className="text-sm font-semibold">Layout</span>
+          <span className="text-xs text-muted">Pro: dense rows, always-open market rail, dock windows</span>
+        </span>
+        <Segmented
+          label="Layout"
+          value={p.layout}
+          onChange={(layout) => set({ ...p, layout })}
+          options={[
+            { value: 'clean', label: 'Clean' },
+            { value: 'pro', label: 'Pro' },
+          ]}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {THEMES.map((t) => {
           const on = p.theme === t.id;

@@ -17,6 +17,9 @@ import { TrenchCustomize } from '@/components/trench-customize';
 import { useTrenchPrefs } from '@/lib/trench-prefs';
 import { soundFor } from '@/lib/sounds';
 import { SupplySplit } from '@/components/supply-split';
+import { TrenchRow } from '@/components/trench-row';
+import { ProSidebar } from '@/components/pro-sidebar';
+import { useUiPrefs } from '@/lib/ui-prefs';
 
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
   { id: 'new', title: 'New Pairs', hint: 'just launched', accent: '#8FC6E6' },
@@ -38,6 +41,8 @@ export default function TrenchesPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const [mobileStage, setMobileStage] = useState<TrenchStage>('new');
   const [prefs, setPrefs] = useTrenchPrefs();
+  const [ui, setUi] = useUiPrefs();
+  const pro = ui.layout === 'pro';
   const [customizing, setCustomizing] = useState(false);
   const router = useRouter();
   const pick = (t: TrenchToken) => {
@@ -106,11 +111,16 @@ export default function TrenchesPage() {
       const tx = await api<SwapTx>('/swap/build', { body: { quoteId: q.quoteId } });
       const txHash = await sendSwap(tx);
       soundFor('buy');
-      await api('/trades', { body: { quoteId: q.quoteId, chain: t.chain, side: 'buy', tokenAddress: t.address, tokenSymbol: t.symbol, txHash, shareToRoom: true, source: 'quickbuy' } });
+      await api('/trades', {
+        body: { quoteId: q.quoteId, chain: t.chain, side: 'buy', tokenAddress: t.address, tokenSymbol: t.symbol, txHash, shareToRoom: true, source: 'quickbuy' },
+      });
       toast({ title: `Bought ${t.symbol}`, body: `${amount} ${CHAINS[t.chain].nativeSymbol} · confirming`, tone: 'lime' });
     } catch (e) {
       const msg = (e as Error).message;
-      toast({ title: /gas/i.test(msg) ? 'Not enough for gas' : msg.startsWith('min_trade') ? 'Trade too small' : 'Quick buy failed', body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $2' : msg });
+      toast({
+        title: /gas/i.test(msg) ? 'Not enough for gas' : msg.startsWith('min_trade') ? 'Trade too small' : 'Quick buy failed',
+        body: msg.startsWith('min_trade') ? 'The minimum trade on Magura is $2' : msg,
+      });
     } finally {
       setBuying(null);
     }
@@ -137,7 +147,22 @@ export default function TrenchesPage() {
             Settings
           </Link>
         </span>
-        <button onClick={() => setCustomizing(true)} className="ml-auto flex h-9 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:text-text xl:ml-0">
+        <div role="group" aria-label="Layout" className="ml-auto flex rounded-xl border border-line-2 bg-raised p-0.5 xl:ml-0">
+          {(['clean', 'pro'] as const).map((l) => (
+            <button
+              key={l}
+              aria-pressed={ui.layout === l}
+              onClick={() => setUi({ ...ui, layout: l })}
+              className={`h-8 rounded-[9px] px-3 text-xs font-semibold capitalize ${ui.layout === l ? 'bg-text text-bg' : 'text-muted hover:text-text'}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setCustomizing(true)}
+          className="flex h-9 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:text-text xl:ml-0"
+        >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6" />
           </svg>
@@ -147,22 +172,21 @@ export default function TrenchesPage() {
       <TrenchCustomize open={customizing} onClose={() => setCustomizing(false)} value={prefs} onChange={setPrefs} />
 
       <div className="flex items-center gap-2 border-b border-line bg-bar p-2 lg:hidden">
-      <div role="tablist" aria-label="Stage" className="grid flex-1 grid-cols-3 gap-1">
-        {STAGES.map((s, i) => (
-          <button
-            key={s.id}
-            role="tab"
-            aria-selected={mobileStage === s.id}
-            onClick={() => setMobileStage(s.id)}
-            className={`flex h-10 items-center justify-center gap-1.5 rounded-[10px] text-xs font-semibold ${mobileStage === s.id ? 'bg-text text-bg' : 'text-text-2'}`}
-          >
-            <span className="h-2 w-2 rounded-[3px]" style={{ background: s.accent }} />
-            {s.id === 'almost' ? 'Almost' : s.title}
-            <span className="num opacity-60">{results[i].data?.length ?? 0}</span>
-          </button>
-        ))}
-      </div>
-      <FilterButton compact filter={filters[mobileStage][0]} onClick={() => setFilterFor(mobileStage)} />
+        <div role="tablist" aria-label="Stage" className="grid flex-1 grid-cols-3 gap-1">
+          {STAGES.map((s, i) => (
+            <button
+              key={s.id}
+              role="tab"
+              aria-selected={mobileStage === s.id}
+              onClick={() => setMobileStage(s.id)}
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-[10px] text-xs font-semibold ${mobileStage === s.id ? 'bg-text text-bg' : 'text-text-2'}`}
+            >
+              <span className="h-2 w-2 rounded-[3px]" style={{ background: s.accent }} />
+              {s.id === 'almost' ? 'Almost' : s.title}
+            </button>
+          ))}
+        </div>
+        <FilterButton compact filter={filters[mobileStage][0]} onClick={() => setFilterFor(mobileStage)} />
       </div>
       {filterFor && (
         <FilterPanel
@@ -176,41 +200,62 @@ export default function TrenchesPage() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-wrap">
-        <div className="grid min-w-0 flex-[999_1_820px] grid-cols-[repeat(auto-fit,minmax(300px,1fr))]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+        {pro && <ProSidebar />}
+        <div
+          className={`grid min-w-0 flex-[999_1_820px] ${pro ? 'grid-cols-[repeat(auto-fit,minmax(330px,1fr))]' : 'grid-cols-[repeat(auto-fit,minmax(300px,1fr))]'}`}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
           {STAGES.map((s, i) => (
             <section key={s.id} aria-label={s.title} className={`min-w-0 flex-col border-line lg:flex lg:border-r ${mobileStage === s.id ? 'flex' : 'hidden'}`}>
               <div className="hidden items-center gap-2.5 border-b border-line bg-bar px-4 py-3.5 lg:flex">
                 <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.accent }} />
                 <h2 className="text-[15px] font-semibold">{s.title}</h2>
-                <span className="num rounded-md border border-line-2 px-1.5 text-[11px] text-muted">{results[i].data?.length ?? 0}</span>
                 <span className="ml-auto text-[11px] text-muted">{s.hint}</span>
                 <FilterButton compact filter={filters[s.id][0]} onClick={() => setFilterFor(s.id)} />
               </div>
-              <div className="scroll-thin flex flex-col gap-2 p-2.5 lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto">
-                {results[i].isLoading && Array.from({ length: 5 }).map((_, k) => <div key={k} className="h-[118px] animate-pulse rounded-2xl bg-panel" />)}
+              <div className={`scroll-thin flex flex-col lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto ${pro ? '' : 'gap-2 p-2.5'}`}>
+                {results[i].isLoading &&
+                  Array.from({ length: 5 }).map((_, k) => <div key={k} className={`${pro ? 'h-[62px] border-b border-line' : 'h-[118px] rounded-2xl'} animate-pulse bg-panel`} />)}
                 {results[i].data?.length === 0 && <p className="p-6 text-center text-sm text-muted">Nothing here yet — tokens stream in live.</p>}
                 {results[i].data
                   ?.filter((t) => !(prefs.hideDevSold && (t.devSold || t.intel?.devSoldAll)))
-                  .map((t) => (
-                    <TrenchCard
-                      key={`${t.chain}:${t.address}`}
-                      t={t}
-                      accent={s.accent}
-                      prefs={prefs}
-                      amount={amountFor(t)}
-                      nativeSymbol={CHAINS[t.chain].nativeSymbol}
-                      selected={sel?.address === t.address}
-                      onSelect={() => pick(t)}
-                      onBuy={(amt) => quickBuy(t, amt)}
-                      buying={buying === t.address}
-                    />
-                  ))}
+                  .map((t) =>
+                    pro ? (
+                      <TrenchRow
+                        key={`${t.chain}:${t.address}`}
+                        t={t}
+                        accent={s.accent}
+                        prefs={prefs}
+                        amount={amountFor(t)}
+                        onOpen={() => router.push(`/t/${t.chain}/${t.address}`)}
+                        onBuy={(amt) => quickBuy(t, amt)}
+                        buying={buying === t.address}
+                      />
+                    ) : (
+                      <TrenchCard
+                        key={`${t.chain}:${t.address}`}
+                        t={t}
+                        accent={s.accent}
+                        prefs={prefs}
+                        amount={amountFor(t)}
+                        nativeSymbol={CHAINS[t.chain].nativeSymbol}
+                        selected={sel?.address === t.address}
+                        onSelect={() => pick(t)}
+                        onBuy={(amt) => quickBuy(t, amt)}
+                        buying={buying === t.address}
+                      />
+                    ),
+                  )}
               </div>
             </section>
           ))}
         </div>
 
-        <aside aria-label="Coin room" className="hidden max-h-[calc(100vh-130px)] min-w-0 flex-[1_1_320px] flex-col bg-bar lg:sticky lg:top-16 lg:flex lg:max-w-[360px]">
+        <aside
+          aria-label="Coin room"
+          className={`${pro ? 'hidden!' : ''} hidden max-h-[calc(100vh-130px)] min-w-0 flex-[1_1_320px] flex-col bg-bar lg:sticky lg:top-16 lg:flex lg:max-w-[360px]`}
+        >
           {sel ? (
             <>
               <div className="flex flex-col gap-3.5 border-b border-line p-4">

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useLiveStatus } from '@/lib/socket';
+import { Dock } from './dock';
 
 const fmt = (v: number | null | undefined) =>
   v == null ? '—' : `$${v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : v.toFixed(2)}`;
@@ -50,6 +51,7 @@ export function StatusBar() {
         <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
         {state === 'offline' ? 'Reconnecting' : 'Connected'}
       </span>
+      <Dock />
       {(['SOL', 'ETH', 'BNB', 'BTC'] as const).map((k) => (
         <span key={k}>
           {k} <span className="text-text-2">{fmt(ticker.data?.[k])}</span>

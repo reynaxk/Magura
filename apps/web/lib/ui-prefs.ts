@@ -30,6 +30,8 @@ export const SOUNDS = ['off', 'tick', 'pop', 'chime', 'kaching', 'bell', 'blip']
 export type SoundId = (typeof SOUNDS)[number];
 
 export interface UiPrefs {
+  /** pro = dense terminal: compact rows, always-open sidebar, dock windows */
+  layout: 'clean' | 'pro';
   theme: ThemeId;
   /** null = the theme's own accent */
   accent: string | null;
@@ -40,6 +42,7 @@ export interface UiPrefs {
 }
 
 export const DEFAULT_UI: UiPrefs = {
+  layout: 'clean',
   theme: 'magura',
   accent: null,
   sounds: { buy: 'tick', sell: 'kaching', order: 'chime', alert: 'bell', friend: 'pop', devsell: 'blip', mention: 'pop' },

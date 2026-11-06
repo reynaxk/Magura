@@ -1,6 +1,7 @@
 import { Controller, Get, Injectable, NotFoundException, OnModuleInit, Param, Query } from '@nestjs/common';
 import { z } from 'zod';
 import type { CallAttachment } from '@magura/shared';
+import type { Prisma } from '@magura/db';
 import { Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse } from '../common/zod';
@@ -103,6 +104,7 @@ export class CompetitionsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly comp: CompetitionsService,
+    private readonly redis: RedisService,
   ) {}
 
   @Public()
@@ -131,6 +133,14 @@ export class CompetitionsController {
     };
   }
 
+  /** Top callers across every public group: average return, hit 2x rate, best call. */
+  @Public()
+  @Get('callers/top')
+  async topCallers(@Query() q: Record<string, string>) {
+    const p = parse(z.object({ days: z.coerce.number().int().refine((n) => [1, 7, 30].includes(n)).default(7) }), q);
+    return this.redis.cached(`callers:top:${p.days}`, 60, () => this.scoreCalls({ room: { channel: { group: { isPublic: true } } } }, p.days, 50));
+  }
+
   /** How each member's calls in this group have done since they were posted. */
   @Public()
   @Get('groups/:slug/callers')
@@ -138,8 +148,12 @@ export class CompetitionsController {
     const p = parse(z.object({ days: z.coerce.number().int().min(1).max(90).default(30) }), q);
     const g = await this.prisma.db.group.findUnique({ where: { slug }, select: { id: true } });
     if (!g) throw new NotFoundException();
+    return this.scoreCalls({ room: { channel: { groupId: g.id } } }, p.days, 200);
+  }
+
+  private async scoreCalls(where: Prisma.MessageWhereInput, days: number, limit: number) {
     const msgs = await this.prisma.db.message.findMany({
-      where: { deletedAt: null, createdAt: { gte: new Date(Date.now() - p.days * 86_400_000) }, attachment: { path: ['kind'], equals: 'call' }, room: { channel: { groupId: g.id } } },
+      where: { deletedAt: null, createdAt: { gte: new Date(Date.now() - days * 86_400_000) }, attachment: { path: ['kind'], equals: 'call' }, ...where },
       include: { author: { select: { id: true, handle: true, avatarUrl: true } } },
       take: 1000,
     });
@@ -149,9 +163,9 @@ export class CompetitionsController {
       select: { chain: true, address: true, priceUsd: true },
     });
     const price = new Map(tokens.map((t) => [`${t.chain}:${t.address}`, t.priceUsd]));
-    const by = new Map<string, { handle: string; avatarUrl: string | null; calls: number; scored: number; sumPct: number; wins: number; best: { symbol: string; pct: number } | null }>();
+    const by = new Map<string, { handle: string; avatarUrl: string | null; calls: number; scored: number; sumPct: number; wins: number; x2: number; best: { symbol: string; pct: number } | null }>();
     for (const { m, a } of calls) {
-      const row = by.get(m.author.id) ?? { handle: m.author.handle, avatarUrl: m.author.avatarUrl, calls: 0, scored: 0, sumPct: 0, wins: 0, best: null };
+      const row = by.get(m.author.id) ?? { handle: m.author.handle, avatarUrl: m.author.avatarUrl, calls: 0, scored: 0, sumPct: 0, wins: 0, x2: 0, best: null };
       row.calls++;
       const now = price.get(`${a.chain}:${a.chain === 'solana' ? a.token.address : a.token.address.toLowerCase()}`);
       if (a.priceAtCall && now) {
@@ -159,12 +173,14 @@ export class CompetitionsController {
         row.scored++;
         row.sumPct += pct;
         if (pct > 0) row.wins++;
+        if (pct >= 100) row.x2++;
         if (!row.best || pct > row.best.pct) row.best = { symbol: a.token.symbol, pct };
       }
       by.set(m.author.id, row);
     }
     return [...by.values()]
-      .map((r) => ({ handle: r.handle, avatarUrl: r.avatarUrl, calls: r.calls, avgPct: r.scored ? r.sumPct / r.scored : null, hitRatePct: r.scored ? (r.wins / r.scored) * 100 : null, best: r.best }))
-      .sort((a, b) => (b.avgPct ?? -Infinity) - (a.avgPct ?? -Infinity));
+      .map((r) => ({ handle: r.handle, avatarUrl: r.avatarUrl, calls: r.calls, avgPct: r.scored ? r.sumPct / r.scored : null, hitRatePct: r.scored ? (r.wins / r.scored) * 100 : null, hit2xPct: r.scored ? (r.x2 / r.scored) * 100 : null, best: r.best }))
+      .sort((a, b) => (b.avgPct ?? -Infinity) - (a.avgPct ?? -Infinity))
+      .slice(0, limit);
   }
 }

@@ -19,6 +19,7 @@ import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { RealtimeService } from '../realtime/realtime.service';
 import { IntelService } from './intel.service';
+import { SignalsService } from './signals.service';
 
 /** Stage thresholds. Launchpad tokens use the bonding curve; DEX-native tokens use age + market cap. */
 const ALMOST_BONDING_PCT = 70;
@@ -49,6 +50,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     private readonly rt: RealtimeService,
     private readonly chat: ChatService,
     private readonly intel: IntelService,
+    private readonly signals: SignalsService,
   ) {}
 
   async onModuleInit() {
@@ -242,7 +244,11 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       const addrs = paid.filter((p) => p.chain === chain).map((p) => p.address);
       if (!addrs.length) continue;
       const r = await this.prisma.db.token.updateMany({ where: { chain, address: { in: addrs }, dexPaid: false }, data: { dexPaid: true } });
-      if (r.count) for (const a of addrs) this.rt.toRoom(`trenches:${chain}`, 'trenches:update', { chain, address: a, dexPaid: true });
+      if (r.count)
+        for (const a of addrs) {
+          this.rt.toRoom(`trenches:${chain}`, 'trenches:update', { chain, address: a, dexPaid: true });
+          this.signals.dexPaid(chain, a);
+        }
     }
   }
 

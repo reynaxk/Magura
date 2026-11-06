@@ -8,6 +8,8 @@ import { api } from '@/lib/api';
 import { ProSidebar } from '@/components/pro-sidebar';
 import { TagPill } from '@/components/wallet-tables';
 import { Avatar, Delta, Empty, Icon, Segmented } from '@/components/ui';
+import { SmartFlow } from '@/components/smart-flow';
+import { TopCallers } from '@/components/top-callers';
 
 interface Row {
   wallet: string;
@@ -20,18 +22,12 @@ interface Row {
   handle?: string | null;
   smart?: boolean;
 }
-interface Flow {
-  address: string;
-  smartBuySol: number;
-  smartWallets: number;
-  token: { symbol: string; name: string; imageUrl: string | null; marketCapUsd: number | null; createdAt: string; priceChange1h: number | null };
-}
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const sol = (v: number, sign = false) => `${sign && v > 0 ? '+' : ''}${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2)} SOL`;
 
 export default function SmartPage() {
-  const [tab, setTab] = useState<'rank' | 'flow' | 'radar'>('rank');
+  const [tab, setTab] = useState<'rank' | 'flow' | 'radar' | 'callers'>('rank');
   return (
     <div className="flex w-full items-start">
       <ProSidebar />
@@ -46,6 +42,7 @@ export default function SmartPage() {
               { value: 'rank', label: 'Rank' },
               { value: 'flow', label: 'Smart flow' },
               { value: 'radar', label: 'Radar' },
+              { value: 'callers', label: 'Top callers' },
             ]}
           />
           <span className="text-xs text-muted">From every pump.fun trade, live</span>
@@ -53,6 +50,7 @@ export default function SmartPage() {
         {tab === 'rank' && <Rank />}
         {tab === 'flow' && <SmartFlow />}
         {tab === 'radar' && <Radar />}
+        {tab === 'callers' && <TopCallers />}
       </div>
     </div>
   );
@@ -115,46 +113,6 @@ function Rank() {
         {q.isLoading && <p className="p-6 text-sm text-muted">Loading wallets…</p>}
         {q.data?.length === 0 && <Empty icon={Icon.trend} title="Ranking is warming up">Wallets appear as they close trades. Check back in a few minutes.</Empty>}
       </div>
-    </section>
-  );
-}
-
-function SmartFlow() {
-  const [m, setM] = useState<'5' | '15' | '60' | '240'>('60');
-  const q = useQuery({ queryKey: ['smart-flow', m], queryFn: () => api<Flow[]>(`/market/smart/flow?m=${m}`), refetchInterval: 15_000 });
-  return (
-    <section className="panel overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-        <Segmented
-          label="Window"
-          value={m}
-          onChange={setM}
-          options={[
-            { value: '5', label: '5m' },
-            { value: '15', label: '15m' },
-            { value: '60', label: '1h' },
-            { value: '240', label: '4h' },
-          ]}
-        />
-        <span className="text-xs text-muted">Coins smart wallets are buying</span>
-      </div>
-      {q.data?.map((f) => (
-        <Link key={f.address} href={`/t/solana/${f.address}`} className="flex items-center gap-3 border-b border-[#151820] px-3 py-2 hover:bg-hover">
-          <Avatar name={f.token.symbol} src={f.token.imageUrl} size={32} />
-          <span className="flex min-w-0 flex-1 flex-col leading-tight">
-            <span className="text-[13px] font-semibold">{f.token.symbol}</span>
-            <span className="num text-[11px] text-muted">
-              {fmtAge(f.token.createdAt)} · MC {fmtUsd(f.token.marketCapUsd)}
-            </span>
-          </span>
-          <span className="text-[12px]">
-            <Delta value={f.token.priceChange1h} />
-          </span>
-          <span className="num w-28 text-right text-[12px] text-lime">+{f.smartBuySol.toFixed(2)} SOL</span>
-          <span className="num w-20 text-right text-[11px] text-text-2">{f.smartWallets} smart</span>
-        </Link>
-      ))}
-      {q.data?.length === 0 && <Empty icon={Icon.trend} title="No smart buying in this window">Smart wallets are picked from the 7-day leaderboard every 5 minutes.</Empty>}
     </section>
   );
 }

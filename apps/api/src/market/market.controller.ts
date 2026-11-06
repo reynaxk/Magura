@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Cron } from '@nestjs/schedule';
 import { dexscreener, fetchNews, geckoterminal, goplus, jupiter, polymarket } from '@magura/chains';
 import type { User } from '@magura/db';
-import { WALLET_TAGS, parseFilter, type ChainId, type HolderSort, type Timeframe, type TokenIntel, type WalletTag } from '@magura/shared';
+import { WALLET_TAGS, parseFilter, type ChainId, type HolderSort, type SignalKind, type Timeframe, type TokenIntel, type WalletTag } from '@magura/shared';
 import { CurrentUser, OptionalUser, Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
@@ -12,6 +12,7 @@ import { TrenchesService } from './trenches.service';
 import { CoinActivityService } from './coin-activity.service';
 import { IntelService } from './intel.service';
 import { SmartService, type Window } from './smart.service';
+import { SignalsService } from './signals.service';
 
 const addr = (chain: ChainId, a: string) => (chain === 'solana' ? a : a.toLowerCase());
 
@@ -25,6 +26,7 @@ export class MarketController {
     private readonly activity: CoinActivityService,
     private readonly intel: IntelService,
     private readonly smart: SmartService,
+    private readonly signals: SignalsService,
   ) {}
 
   /** Hunt: discover coins. `f` = JSON CoinFilter from the Filters panel; `count=1` returns only the match count. */
@@ -146,6 +148,14 @@ export class MarketController {
     const rows =
       all?.map((r) => (this.smart.isSmart(r.wallet) && !r.tags.includes('smart') ? { ...r, tags: ['smart' as WalletTag, ...r.tags] } : r)).filter((r) => tag !== 'smart' || r.tags.includes('smart')).slice(0, 100) ?? null;
     return { rows, nativeUsd: nativeUsd ?? null, intel: (row?.intel as TokenIntel | null) ?? null, creator: row?.creator ?? null };
+  }
+
+  /** Monitor feed: whale buys, smart buys, dev sells, migrations, DEX paid, bundled launches. */
+  @Public()
+  @Get('signals')
+  signalFeed(@Query('kinds') kinds = '') {
+    const list = kinds.split(',').filter(Boolean) as SignalKind[];
+    return this.signals.recent(list.length ? list : null);
   }
 
   /** Wallet leaderboard (CopyTrade → Rank). */

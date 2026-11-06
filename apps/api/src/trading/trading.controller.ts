@@ -84,6 +84,34 @@ export class TradingController {
     }
   }
 
+  /** Your average entry on one coin (since your last full exit) — the chart's entry line. */
+  @Get('me/position/:chain/:token')
+  async position(@Param('chain') c: string, @Param('token') tok: string, @CurrentUser() user: User) {
+    const chain = parse(zChain, c);
+    const token = chain === 'solana' ? tok : tok.toLowerCase();
+    const trades = await this.prisma.db.trade.findMany({ where: { userId: user.id, chain, tokenAddress: token, status: 'confirmed' }, orderBy: { createdAt: 'asc' } });
+    let qty = 0n;
+    let cost = 0;
+    let weighted = 0;
+    let sold = 0;
+    for (const t of trades) {
+      if (t.side === 'buy') {
+        qty += BigInt(t.amountOut || '0');
+        cost += Number(t.amountUsd ?? 0);
+        if (t.priceUsd) weighted += Number(t.amountUsd ?? 0) * t.priceUsd;
+      } else {
+        const s = BigInt(t.amountIn || '0');
+        sold += Number(t.amountUsd ?? 0);
+        qty = s >= qty ? 0n : qty - s;
+        if (qty === 0n) {
+          cost = 0;
+          weighted = 0;
+        }
+      }
+    }
+    return { open: qty > 0n, avgPriceUsd: qty > 0n && cost > 0 ? weighted / cost : null, costUsd: qty > 0n ? cost : 0, soldUsd: sold };
+  }
+
   @Get('me/portfolio')
   async portfolio(@CurrentUser() user: User) {
     const trades = await this.prisma.db.trade.findMany({ where: { userId: user.id, status: 'confirmed' }, orderBy: { createdAt: 'asc' } });

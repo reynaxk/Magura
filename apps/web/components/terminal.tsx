@@ -6,7 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { CHAINS, fmtPrice, fmtUsd, roomIds, type ChainId, type PairSummary, type Timeframe, type TokenIntel, type TokenRisk } from '@magura/shared';
 import { api } from '@/lib/api';
 import { ChatPanel } from './chat-panel';
-import { PriceChart, type ChartMarker } from './price-chart';
+import { PriceChart, type ChartLine, type ChartMarker } from './price-chart';
+import { useSession } from '@/lib/session';
 import { TradeTicket } from './trade-ticket';
 import { InstantTrade } from './instant-trade';
 import { CoinActivity } from './coin-activity';
@@ -87,6 +88,14 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
     return out;
   }, [friends.data, coinTrades.data, show]);
 
+  const { me } = useSession();
+  const position = useQuery({
+    queryKey: ['position', chain, address],
+    queryFn: () => api<{ open: boolean; avgPriceUsd: number | null }>(`/me/position/${chain}/${address}`),
+    enabled: !!me,
+    refetchInterval: 30_000,
+  });
+  const lines: ChartLine[] = position.data?.open && position.data.avgPriceUsd ? [{ price: position.data.avgPriceUsd, label: 'Your entry', color: '#E9ECF2' }] : [];
   const mc = pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd ?? null;
   const price = pair?.priceUsd ?? tok?.priceUsd ?? null;
   const intel = tok?.intel ?? null;
@@ -150,7 +159,7 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
                   <span className="max-w-sm text-[13px] text-muted">We couldn&apos;t reach the price feeds. Chat and trading still work — retrying automatically.</span>
                 </div>
               ) : (
-                <PriceChart chain={chain} pool={pool} tf={tf} height={440} markers={markers} />
+                <PriceChart chain={chain} pool={pool} tf={tf} height={440} markers={markers} lines={lines} />
               )}
             </section>
             <CoinActivity chain={chain} address={address} creator={tok?.creator ?? null} />

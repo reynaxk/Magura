@@ -45,6 +45,7 @@ export interface WalletFill {
   at: Date;
 }
 export type FillHandler = (f: WalletFill) => void;
+export type IntelHandler = (e: { chain: ChainId; address: string; intel: TokenIntel; launchedAt: number }) => void;
 export type LaunchHandler = (e: { chain: ChainId; address: string; creator: string; symbol: string }) => void | Promise<void>;
 export type MigrateHandler = (e: { chain: ChainId; address: string; at: Date }) => void | Promise<void>;
 export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: string; soldAll: boolean; at: Date }) => void | Promise<void>;
@@ -60,6 +61,11 @@ export class IntelService implements OnModuleInit {
   private migrateHandlers: MigrateHandler[] = [];
   private fillHandlers: FillHandler[] = [];
   private launchHandlers: LaunchHandler[] = [];
+  private intelHandlers: IntelHandler[] = [];
+
+  onIntel(fn: IntelHandler) {
+    this.intelHandlers.push(fn);
+  }
 
   /** A coin was just created (dev snipe listens). */
   onLaunched(fn: LaunchHandler) {
@@ -323,6 +329,8 @@ export class IntelService implements OnModuleInit {
     // updateMany: the coin row may not exist yet for the launch tx itself — no error, no log noise
     await this.prisma.db.token.updateMany({ where: { chain: chain as Chain, address }, data: { intel: intel as object, holders: intel.holders } }).catch(() => undefined);
     this.rt.toRoom(`trenches:${chain}`, 'trenches:update', { chain, address, intel, holders: intel.holders });
+    const launchedAt = Number((await this.redis.client.hget(metaKey(chain, address), 'launchedAt')) ?? 0);
+    for (const h of this.intelHandlers) h({ chain, address, intel, launchedAt });
     return intel;
   }
 

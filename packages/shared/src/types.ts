@@ -195,3 +195,21 @@ export interface HuntToken {
   friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];
   hotScore: number;
 }
+
+/** Live market signals (Monitor). */
+export type SignalKind = 'whale_buy' | 'smart_buy' | 'dev_sell' | 'migrated' | 'dex_paid' | 'bundled_launch' | 'volume_spike';
+export interface SignalDTO {
+  id: string;
+  kind: SignalKind;
+  chain: ChainId;
+  address: string;
+  symbol: string;
+  imageUrl: string | null;
+  marketCapUsd: number | null;
+  /** native amount involved (buys) */
+  native?: number | null;
+  wallet?: string | null;
+  /** short human detail, e.g. "6 bundlers hold 24%" */
+  detail: string;
+  at: string;
+}

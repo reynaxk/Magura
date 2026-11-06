@@ -16,6 +16,7 @@ const NAV = [
   { href: '/trenches', label: 'Trenches' },
   { href: '/', label: 'Trending' },
   { href: '/smart', label: 'Smart' },
+  { href: '/monitor', label: 'Monitor' },
   { href: '/copy', label: 'Copy' },
   { href: '/feed', label: 'Feed' },
   { href: '/groups', label: 'Groups' },

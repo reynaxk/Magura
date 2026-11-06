@@ -16,7 +16,27 @@ export interface ChartMarker {
 
 const KIND_COLOR = { dev: '#F5A64A', you: '#E9ECF2', smart: '#A78BFA' } as const;
 
-export function PriceChart({ chain, pool, tf, height = 320, markers = [] }: { chain: ChainId; pool: string | null; tf: Timeframe; height?: number; markers?: ChartMarker[] }) {
+export interface ChartLine {
+  price: number;
+  label: string;
+  color: string;
+}
+
+export function PriceChart({
+  chain,
+  pool,
+  tf,
+  height = 320,
+  markers = [],
+  lines = [],
+}: {
+  chain: ChainId;
+  pool: string | null;
+  tf: Timeframe;
+  height?: number;
+  markers?: ChartMarker[];
+  lines?: ChartLine[];
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -90,6 +110,15 @@ export function PriceChart({ chain, pool, tf, height = 320, markers = [] }: { ch
       }));
     candleRef.current.setMarkers(ms);
   }, [candles.data, markers]);
+
+  // horizontal lines: your average entry, alerts…
+  const lineKey = lines.map((l) => `${l.label}:${l.price}`).join('|');
+  useEffect(() => {
+    const series = candleRef.current;
+    if (!series || !candles.data?.length) return;
+    const made = lines.filter((l) => Number.isFinite(l.price) && l.price > 0).map((l) => series.createPriceLine({ price: l.price, color: l.color, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: l.label }));
+    return () => made.forEach((pl) => series.removePriceLine(pl));
+  }, [lineKey, candles.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="relative rounded-[14px] border border-[#171A22] bg-bar" style={{ height }}>

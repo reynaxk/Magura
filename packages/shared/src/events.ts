@@ -1,4 +1,4 @@
-import type { ChatMessageDTO, TrenchToken } from './types';
+import type { ChatMessageDTO, SignalDTO, TrenchToken } from './types';
 
 export interface RtcTrack {
   userId: string;
@@ -15,6 +15,8 @@ export interface ServerToClientEvents {
   'chat:typing': (p: { roomId: string; userId: string; handle: string }) => void;
   'trenches:token': (t: TrenchToken) => void;
   'trenches:update': (t: Partial<TrenchToken> & { chain: string; address: string }) => void;
+  /** Monitor feed. */
+  'signal': (s: SignalDTO) => void;
   /** The coin's creator sold (soldAll = dumped everything). */
   'coin:devsell': (e: { chain: string; address: string; soldAll: boolean; at: string }) => void;
   'copy:executed': (p: { subscriptionId: string; side: 'buy' | 'sell'; symbol: string; amountUsd: number; txHash: string | null }) => void;

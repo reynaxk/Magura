@@ -1,11 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { PrivyClient } from '@privy-io/server-auth';
 import type { User } from '@magura/db';
 import { devAuthEnabled, env } from '../config';
 import { PrismaService } from '../common/infra.module';
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private readonly log = new Logger('Auth');
+  /** Result of the boot-time check of PRIVY_APP_ID + PRIVY_APP_SECRET against Privy. */
+  privyServer: 'ok' | 'rejected' | 'unreachable' | 'not_configured' = 'not_configured';
+
   readonly privy: PrivyClient | null =
     env.PRIVY_APP_ID && env.PRIVY_APP_SECRET
       ? new PrivyClient(env.PRIVY_APP_ID, env.PRIVY_APP_SECRET, {
@@ -16,6 +20,40 @@ export class AuthService {
       : null;
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    await this.checkPrivy();
+  }
+
+  /** Probe Privy's server API with our credentials (a lookup that needs the secret). */
+  async checkPrivy() {
+    if (!this.privy) return (this.privyServer = 'not_configured');
+    try {
+      await this.privy.getUserById('did:privy:magura-credential-check');
+      this.privyServer = 'ok';
+    } catch (e: any) {
+      const status = e?.status ?? e?.statusCode;
+      const msg = String(e?.message ?? '');
+      if (status === 401 || status === 403 || /app id or app secret/i.test(msg)) this.privyServer = 'rejected';
+      else if (status === 404 || status === 400 || /not found|invalid/i.test(msg)) this.privyServer = 'ok';
+      else this.privyServer = 'unreachable';
+    }
+    if (this.privyServer === 'rejected') this.log.warn('Privy rejected PRIVY_APP_ID / PRIVY_APP_SECRET — login still works, but email lookup and server-side wallets are off');
+    else this.log.log(`Privy server credentials: ${this.privyServer}`);
+    return this.privyServer;
+  }
+
+  /** Non-secret diagnostics for /health/auth. */
+  privyStatus() {
+    const s = env.PRIVY_APP_SECRET ?? '';
+    return {
+      appId: env.PRIVY_APP_ID ?? null,
+      secretSet: !!s,
+      secretLength: s.length,
+      secretLooksRight: /^privy_app_secret_|^[A-Za-z0-9]{40,}$/.test(s),
+      server: this.privyServer,
+    };
+  }
 
   /** Resolve a Magura user from a Privy access token (or dev header locally). */
   async userFromToken(token: string | undefined, devHandle?: string): Promise<User> {
@@ -34,11 +72,16 @@ export class AuthService {
   }
 
   private async createFromPrivy(privyId: string): Promise<User> {
-    const pu = await this.privy!.getUserById(privyId);
-    const email = pu.email?.address ?? null;
+    // Profile lookup needs the app secret. If Privy refuses it, still let the person in:
+    // the web app syncs their wallets right after login.
+    const pu = await this.privy!.getUserById(privyId).catch((e) => {
+      this.log.warn(`Privy profile lookup failed (${e?.message ?? e}); creating user from token only`);
+      return null;
+    });
+    const email = pu?.email?.address ?? null;
     const base = (email?.split('@')[0] ?? `trader${Math.floor(Math.random() * 1e6)}`).replace(/[^a-z0-9_.]/gi, '').slice(0, 16) || 'trader';
     const handle = await this.uniqueHandle(base.toLowerCase());
-    const wallets = (pu.linkedAccounts as any[])
+    const wallets = ((pu?.linkedAccounts ?? []) as any[])
       .filter((a) => a.type === 'wallet')
       .map((w, i) => ({
         chainKind: w.chainType === 'solana' ? 'svm' : 'evm',

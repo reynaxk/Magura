@@ -2,6 +2,7 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { Public } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
+import { AuthService } from './auth/auth.service';
 import { BootstrapService } from './common/bootstrap.service';
 import { InfraModule, PrismaService, RedisService } from './common/infra.module';
 import { MarketController } from './market/market.controller';
@@ -36,6 +37,7 @@ class HealthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly auth: AuthService,
   ) {}
 
   @Public()
@@ -46,6 +48,14 @@ class HealthController {
       this.redis.client.ping().then(() => 'ok').catch(() => 'down'),
     ]);
     return { status: db === 'ok' && cache === 'ok' ? 'ok' : 'degraded', db, redis: cache, spotOnly: true };
+  }
+
+  /** Login setup check — never returns secret values. */
+  @Public()
+  @Get('health/auth')
+  async healthAuth() {
+    await this.auth.checkPrivy();
+    return this.auth.privyStatus();
   }
 }
 

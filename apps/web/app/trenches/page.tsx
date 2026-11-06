@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CHAINS, activeFilterCount, fmtAge, fmtUsd, roomIds, type CoinFilter, type SwapTx, type TrenchStage, type TrenchToken } from '@magura/shared';
 import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
@@ -11,7 +11,11 @@ import { useSession } from '@/lib/session';
 import { useSocket, useSocketEvent } from '@/lib/socket';
 import { ChatPanel } from '@/components/chat-panel';
 import { toast } from '@/components/toaster';
-import { Avatar, Icon, RiskTags, Svg, ChatBadge } from '@/components/ui';
+import { Avatar, Icon, Svg } from '@/components/ui';
+import { TrenchCard } from '@/components/trench-card';
+import { TrenchCustomize } from '@/components/trench-customize';
+import { useTrenchPrefs } from '@/lib/trench-prefs';
+import { SupplySplit } from '@/components/supply-split';
 
 const STAGES: { id: TrenchStage; title: string; hint: string; accent: string }[] = [
   { id: 'new', title: 'New Pairs', hint: 'just launched', accent: '#8FC6E6' },
@@ -32,12 +36,15 @@ export default function TrenchesPage() {
   const [selected, setSelected] = useState<TrenchToken | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [mobileStage, setMobileStage] = useState<TrenchStage>('new');
+  const [prefs, setPrefs] = useTrenchPrefs();
+  const [customizing, setCustomizing] = useState(false);
   const router = useRouter();
   const pick = (t: TrenchToken) => {
-    // phones: open the token page (chart + room); desktop: show it in the side panel
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) router.push(`/t/${t.chain}/${t.address}`);
+    // phones: open the token page (chart + room); desktop: side panel unless they chose "open chart"
+    if (prefs.click === 'page' || (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches)) router.push(`/t/${t.chain}/${t.address}`);
     else setSelected(t);
   };
+  const amountFor = (t: TrenchToken) => ((me?.settings?.quickBuyAmounts ?? {}) as Record<string, string>)[t.chain] ?? '0.1';
   const [, tick] = useState(0);
   const keyOf = (stage: TrenchStage) => JSON.stringify(filters[stage][0]);
   const allChains = [...new Set([...fNew.chains, ...fAlmost.chains, ...fSurvived.chains])];
@@ -87,11 +94,11 @@ export default function TrenchesPage() {
     }
   });
 
-  async function quickBuy(t: TrenchToken) {
+  async function quickBuy(t: TrenchToken, amountOverride?: string) {
     if (!me) return login();
     const wallet = addressFor(t.chain);
     if (!wallet) return toast({ title: 'No wallet', body: `Connect a ${CHAINS[t.chain].name} wallet` });
-    const amount = ((me.settings?.quickBuyAmounts ?? {}) as Record<string, string>)[t.chain] ?? '0.1';
+    const amount = amountOverride ?? amountFor(t);
     setBuying(t.address);
     try {
       const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: 1500, wallet } });
@@ -107,7 +114,9 @@ export default function TrenchesPage() {
     }
   }
 
-  const sel = selected ?? results[1].data?.[0] ?? results[0].data?.[0] ?? null;
+  // keep the side panel live: prefer the fresh copy from the columns
+  const live = selected ? results.flatMap((r) => r.data ?? []).find((x) => x.address === selected.address) : null;
+  const sel = live ?? selected ?? results[1].data?.[0] ?? results[0].data?.[0] ?? null;
 
   return (
     <div className="flex min-h-app flex-col">
@@ -120,13 +129,20 @@ export default function TrenchesPage() {
           <span className={`h-1.5 w-1.5 rounded-full ${paused ? 'bg-amber' : 'bg-lime'}`} />
           {paused ? 'Paused' : 'Live'}
         </button>
-        <span className="ml-auto hidden items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted lg:flex">
-          <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy uses your amounts from{' '}
+        <span className="ml-auto hidden items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted xl:flex">
+          <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy amounts live in{' '}
           <Link href="/settings" className="text-lime">
             Settings
           </Link>
         </span>
+        <button onClick={() => setCustomizing(true)} className="ml-auto flex h-9 items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 text-xs font-semibold text-text-2 hover:text-text xl:ml-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6" />
+          </svg>
+          Customize
+        </button>
       </div>
+      <TrenchCustomize open={customizing} onClose={() => setCustomizing(false)} value={prefs} onChange={setPrefs} />
 
       <div className="flex items-center gap-2 border-b border-line bg-bar p-2 lg:hidden">
       <div role="tablist" aria-label="Stage" className="grid flex-1 grid-cols-3 gap-1">
@@ -171,9 +187,22 @@ export default function TrenchesPage() {
               <div className="scroll-thin flex flex-col gap-2 p-2.5 lg:max-h-[calc(100vh-190px)] lg:overflow-y-auto">
                 {results[i].isLoading && Array.from({ length: 5 }).map((_, k) => <div key={k} className="h-[118px] animate-pulse rounded-2xl bg-panel" />)}
                 {results[i].data?.length === 0 && <p className="p-6 text-center text-sm text-muted">Nothing here yet — tokens stream in live.</p>}
-                {results[i].data?.map((t) => (
-                  <TokenCard key={`${t.chain}:${t.address}`} t={t} accent={s.accent} selected={sel?.address === t.address} onSelect={() => pick(t)} onBuy={() => quickBuy(t)} buying={buying === t.address} />
-                ))}
+                {results[i].data
+                  ?.filter((t) => !(prefs.hideDevSold && (t.devSold || t.intel?.devSoldAll)))
+                  .map((t) => (
+                    <TrenchCard
+                      key={`${t.chain}:${t.address}`}
+                      t={t}
+                      accent={s.accent}
+                      prefs={prefs}
+                      amount={amountFor(t)}
+                      nativeSymbol={CHAINS[t.chain].nativeSymbol}
+                      selected={sel?.address === t.address}
+                      onSelect={() => pick(t)}
+                      onBuy={(amt) => quickBuy(t, amt)}
+                      buying={buying === t.address}
+                    />
+                  ))}
               </div>
             </section>
           ))}
@@ -204,6 +233,7 @@ export default function TrenchesPage() {
                     </div>
                   ))}
                 </div>
+                <SupplySplit intel={sel.intel} risk={sel.risk} compact />
                 <div className="grid grid-cols-2 gap-2">
                   <button className="btn-lime h-11" onClick={() => quickBuy(sel)} disabled={buying === sel.address}>
                     Quick buy
@@ -221,93 +251,5 @@ export default function TrenchesPage() {
         </aside>
       </div>
     </div>
-  );
-}
-
-function TokenCard({
-  t,
-  accent,
-  selected,
-  onSelect,
-  onBuy,
-  buying,
-}: {
-  t: TrenchToken;
-  accent: string;
-  selected: boolean;
-  onSelect: () => void;
-  onBuy: () => void;
-  buying: boolean;
-}) {
-  const friends = useMemo(() => t.friendsBought.slice(0, 3), [t.friendsBought]);
-  return (
-    <article
-      onClick={onSelect}
-      className={`card flex cursor-pointer flex-col gap-2.5 p-3 ${selected ? 'border-lime! bg-[#12161D]' : 'hover:bg-hover'}`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="relative shrink-0">
-          <Avatar name={t.symbol} src={t.imageUrl} size={52} />
-          <span className="num absolute -bottom-1 -right-1 rounded-md border border-line-3 bg-bg px-1 text-[9px] text-text-2">{fmtAge(t.createdAt)}</span>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex min-w-0 items-baseline gap-1.5">
-            <span className="text-sm font-semibold">${t.symbol}</span>
-            <span className="truncate text-xs text-muted">{t.name}</span>
-          </div>
-          <div className="num flex gap-2.5 text-[11px] text-muted">
-            <span>
-              MC <span className="text-text">{fmtUsd(t.marketCapUsd)}</span>
-            </span>
-            <span>
-              V <span className="text-text">{fmtUsd(t.volumeUsd)}</span>
-            </span>
-            <span className="uppercase">{t.chain === 'ethereum' ? 'eth' : t.chain}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ChatBadge count={t.chatCount} />
-            {friends.length > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="flex">
-                  {friends.map((f) => (
-                    <span key={f.userId} className="-mr-1.5">
-                      <Avatar name={f.handle} src={f.avatarUrl} size={18} shape="circle" ring="#0E1015" />
-                    </span>
-                  ))}
-                </span>
-                <span className="ml-1.5 text-[11px] text-text-2">
-                  {friends[0].handle}
-                  {t.friendsBought.length > 1 ? ` +${t.friendsBought.length - 1}` : ''} aped
-                </span>
-              </span>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onBuy();
-          }}
-          disabled={buying}
-          aria-label={`Quick buy ${t.symbol}`}
-          className="num flex h-8 shrink-0 items-center gap-1 rounded-[10px] bg-lime px-2.5 text-xs font-semibold text-bg"
-        >
-          <Svg d={Icon.bolt} size={12} />
-          {buying ? '…' : 'Buy'}
-        </button>
-      </div>
-      <div className="flex items-center gap-2">
-        <RiskTags risk={t.risk} />
-        {t.launchpad && <span className="ml-auto text-[10px] text-faint">{t.launchpad}</span>}
-      </div>
-      {t.stage !== 'survived' && t.bondingPct != null && (
-        <div className="flex items-center gap-2">
-          <div className="h-[5px] flex-1 overflow-hidden rounded-full bg-line">
-            <div className="h-[5px] rounded-full" style={{ width: `${Math.min(100, t.bondingPct)}%`, background: accent }} />
-          </div>
-          <span className="num text-[10px] text-text-2">{t.bondingPct.toFixed(0)}%</span>
-        </div>
-      )}
-    </article>
   );
 }

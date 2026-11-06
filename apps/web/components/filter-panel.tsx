@@ -101,6 +101,15 @@ function RangeInput({ value, unit, placeholder, onChange }: { value: number | un
   );
 }
 
+function TextInput({ value, placeholder, onChange, label, mono }: { value: string; placeholder: string; onChange: (v: string) => void; label: string; mono?: boolean }) {
+  return (
+    <label className="flex h-10 items-center rounded-xl border border-line-2 bg-raised px-3 focus-within:border-lime-line">
+      <span className="sr-only">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`w-full bg-transparent text-[13px] outline-none placeholder:text-faint ${mono ? 'num' : ''}`} />
+    </label>
+  );
+}
+
 /* ───────────── panel ───────────── */
 
 export function FilterPanel({
@@ -122,6 +131,7 @@ export function FilterPanel({
   const [tab, setTab] = useState<'filters' | 'saved'>('filters');
   const [presets, setPresets] = useState<Preset[]>([]);
   const [presetName, setPresetName] = useState('');
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -193,6 +203,16 @@ export function FilterPanel({
         <div className="scroll-thin flex-1 overflow-y-auto px-6">
           {tab === 'filters' ? (
             <>
+              <Section title="Search">
+                <div className="grid grid-cols-2 gap-2">
+                  <TextInput value={draft.keywords ?? ''} placeholder="Keywords, e.g. cat, ai" onChange={(keywords) => setDraft({ ...draft, keywords })} label="Include keywords" />
+                  <TextInput value={draft.excludeKeywords ?? ''} placeholder="Exclude words" onChange={(excludeKeywords) => setDraft({ ...draft, excludeKeywords })} label="Exclude keywords" />
+                  <div className="col-span-2">
+                    <TextInput value={draft.devWallet ?? ''} placeholder="Dev wallet address" onChange={(devWallet) => setDraft({ ...draft, devWallet })} label="Dev wallet" mono />
+                  </div>
+                </div>
+              </Section>
+
               <Section title="Chains">
                 <div className="flex flex-wrap gap-2">
                   {CHAIN_IDS.map((c) => {
@@ -248,6 +268,17 @@ export function FilterPanel({
                 <p className="text-[11px] text-faint">{draft.sources.length ? `${draft.sources.length} selected` : 'All sources'}</p>
               </Section>
 
+              <Section title="Dev behaviour">
+                <div className="grid grid-cols-2 gap-x-4">
+                  <Check on={!!draft.devStillHolding} onChange={(v) => setDraft({ ...draft, devStillHolding: v, devSoldAll: v ? false : draft.devSoldAll })}>
+                    Dev still holding
+                  </Check>
+                  <Check on={!!draft.devSoldAll} onChange={(v) => setDraft({ ...draft, devSoldAll: v, devStillHolding: v ? false : draft.devStillHolding })}>
+                    Dev sold all
+                  </Check>
+                </div>
+              </Section>
+
               <Section title="Socials & dev">
                 <div className="grid grid-cols-2 gap-x-4">
                   <Check on={draft.hasX} onChange={(v) => setDraft({ ...draft, hasX: v })}>
@@ -285,20 +316,29 @@ export function FilterPanel({
                 </Check>
               </Section>
 
-              <Section title="Numbers">
-                <div className="flex flex-col gap-2.5">
-                  {RANGE_FIELDS.map((r) => {
-                    const v = draft.ranges[r.key] ?? {};
-                    return (
-                      <div key={r.key} className="grid grid-cols-[1fr_minmax(0,108px)_minmax(0,108px)] items-center gap-2">
-                        <span className="text-[13px] text-text-2">{r.label}</span>
-                        <RangeInput value={v.min} unit={r.unit} placeholder="Min" onChange={(min) => setRange(r.key, { ...v, min })} />
-                        <RangeInput value={v.max} unit={r.unit} placeholder="Max" onChange={(max) => setRange(r.key, { ...v, max })} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </Section>
+              {(
+                [
+                  ['market', 'Market'],
+                  ['holders', 'Holders & supply'],
+                  ['dev', 'Dev history'],
+                  ['social', 'Social'],
+                ] as const
+              ).map(([group, label]) => (
+                <Section key={group} title={label}>
+                  <div className="flex flex-col gap-2.5">
+                    {RANGE_FIELDS.filter((r) => r.group === group).map((r) => {
+                      const v = draft.ranges[r.key] ?? {};
+                      return (
+                        <div key={r.key} className="grid grid-cols-[1fr_minmax(0,108px)_minmax(0,108px)] items-center gap-2">
+                          <span className="text-[13px] text-text-2">{r.label}</span>
+                          <RangeInput value={v.min} unit={r.unit} placeholder="Min" onChange={(min) => setRange(r.key, { ...v, min })} />
+                          <RangeInput value={v.max} unit={r.unit} placeholder="Max" onChange={(max) => setRange(r.key, { ...v, max })} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Section>
+              ))}
             </>
           ) : (
             <div className="flex flex-col gap-3 py-5">
@@ -321,6 +361,33 @@ export function FilterPanel({
                   Save
                 </button>
               </form>
+              <div className="flex gap-2">
+                <button
+                  className="btn-ghost h-9 flex-1 text-xs"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(btoa(unescape(encodeURIComponent(JSON.stringify(draft)))));
+                    setNote('Filter code copied — share it with anyone');
+                  }}
+                >
+                  Export current
+                </button>
+                <button
+                  className="btn-ghost h-9 flex-1 text-xs"
+                  onClick={async () => {
+                    const raw = (await navigator.clipboard?.readText().catch(() => '')) || window.prompt('Paste a filter code') || '';
+                    try {
+                      const f = JSON.parse(decodeURIComponent(escape(atob(raw.trim())))) as CoinFilter;
+                      setDraft({ ...EMPTY_FILTER, ...f, ranges: { ...(f.ranges ?? {}) } });
+                      setTab('filters');
+                    } catch {
+                      setNote("That isn't a Magura filter code");
+                    }
+                  }}
+                >
+                  Import code
+                </button>
+              </div>
+              {note && <p className="text-center text-[12px] text-text-2">{note}</p>}
               {presets.length === 0 && <p className="py-8 text-center text-[13px] text-muted">Save filters you use often and switch between them in one tap.</p>}
               {presets.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line-2 bg-raised p-3.5">

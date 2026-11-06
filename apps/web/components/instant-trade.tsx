@@ -39,10 +39,11 @@ function PresetEditor({ chain, onDone }: { chain: TradeTarget['chain']; onDone: 
   const [buy, setBuy] = useState<string[]>(p.buy[chain] ?? ['', '', '', '']);
   const [sell, setSell] = useState<string[]>(p.sell.map(String));
   const [slip, setSlip] = useState(String(p.slippageBps / 100));
-  const valid = buy.every((v) => /^\d+(\.\d+)?$/.test(v) && Number(v) > 0) && sell.every((v) => Number(v) >= 1 && Number(v) <= 100) && Number(slip) >= 0.1 && Number(slip) <= 50;
+  const [prio, setPrio] = useState(p.priorityFeeSol ?? '');
+  const valid = buy.every((v) => /^\d+(\.\d+)?$/.test(v) && Number(v) > 0) && sell.every((v) => Number(v) >= 1 && Number(v) <= 100) && Number(slip) >= 0.1 && Number(slip) <= 50 && (prio === '' || (Number(prio) >= 0 && Number(prio) <= 0.1));
   const submit = async () => {
     const next = presets.map((x, i) =>
-      i === active ? { ...x, buy: { ...x.buy, [chain]: buy }, sell: sell.map((v) => Math.round(Number(v))), slippageBps: Math.round(Number(slip) * 100) } : x,
+      i === active ? { ...x, buy: { ...x.buy, [chain]: buy }, sell: sell.map((v) => Math.round(Number(v))), slippageBps: Math.round(Number(slip) * 100), priorityFeeSol: prio || undefined } : x,
     );
     await save({ tradePresets: next });
     onDone();
@@ -66,6 +67,12 @@ function PresetEditor({ chain, onDone }: { chain: TradeTarget['chain']; onDone: 
         Slippage %
         <input className={`${cell} w-20`} inputMode="decimal" value={slip} onChange={(e) => setSlip(e.target.value.replace(/[^\d.]/g, ''))} />
       </label>
+      {chain === 'solana' && (
+        <label className="flex items-center justify-between gap-2" title="Max priority fee per trade. Higher lands faster when the chain is busy. Empty = auto.">
+          Priority fee (SOL)
+          <input className={`${cell} w-20`} inputMode="decimal" placeholder="auto" value={prio} onChange={(e) => setPrio(e.target.value.replace(/[^\d.]/g, ''))} />
+        </label>
+      )}
       <div className="flex gap-1.5">
         <button className="btn-ghost h-8 flex-1 text-xs" onClick={onDone}>
           Cancel
@@ -187,7 +194,9 @@ export function InstantTrade({ target }: { target: TradeTarget }) {
       </div>
       {editing ? <PresetEditor chain={target.chain} onDone={() => setEditing(false)} /> : <Buttons target={target} />}
       <div className="num flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-faint">
-        <span>Slippage {(preset.slippageBps / 100).toFixed(1)}%</span>
+        <span>
+          Slippage {(preset.slippageBps / 100).toFixed(1)}%{target.chain === 'solana' && preset.priorityFeeSol ? ` · Prio ${preset.priorityFeeSol} SOL` : ''}
+        </span>
         <span className="hidden md:inline">Keys 1–4 buy · Q W E R sell</span>
         {!editing && (
           <button onClick={() => setEditing(true)} className="ml-auto text-muted hover:text-text">

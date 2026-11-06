@@ -29,6 +29,8 @@ export interface QuoteInput {
   wallet: string;
   /** Who is trading — invited users get the referral discount. */
   userId?: string;
+  /** Solana: cap on the priority fee (SOL); faster landing in busy blocks */
+  priorityFeeSol?: number;
 }
 
 export interface RecordTradeInput {
@@ -166,15 +168,15 @@ export class TradingService {
 
     if (!receiver) this.log.warn(`No fee wallet set for ${q.chain} — trade quoted without a Magura fee`);
     const quoteId = randomUUID();
-    await this.redis.client.set(`quote:${quoteId}`, JSON.stringify({ quote, wallet: q.wallet, amountUsd }), 'EX', 120);
+    await this.redis.client.set(`quote:${quoteId}`, JSON.stringify({ quote, wallet: q.wallet, amountUsd, priorityFeeSol: q.priorityFeeSol ?? null }), 'EX', 120);
     return { ...quote, quoteId, amountUsd };
   }
 
   async build(quoteId: string) {
     const raw = await this.redis.client.get(`quote:${quoteId}`);
     if (!raw) throw new NotFoundException('quote_expired');
-    const { quote, wallet } = JSON.parse(raw) as { quote: SwapQuote; wallet: string };
-    return buildSwapTx(quote, wallet);
+    const { quote, wallet, priorityFeeSol } = JSON.parse(raw) as { quote: SwapQuote; wallet: string; priorityFeeSol?: number | null };
+    return buildSwapTx(quote, wallet, priorityFeeSol ? { priorityLamports: Math.round(priorityFeeSol * 1e9) } : {});
   }
 
   /** Called after the client submitted the signed tx. Confirmation happens in the background. */

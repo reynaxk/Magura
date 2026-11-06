@@ -11,10 +11,10 @@ export async function getQuote(req: SwapQuoteRequest, evmFee?: { bps: number; si
   return CHAINS[req.chain].kind === 'svm' ? jupiter.quote(req) : kyberswap.quote(req, evmFee);
 }
 
-export async function buildSwapTx(quote: SwapQuote, userAddress: string): Promise<SwapTx> {
+export async function buildSwapTx(quote: SwapQuote, userAddress: string, opts: { priorityLamports?: number } = {}): Promise<SwapTx> {
   switch (quote.provider) {
     case 'jupiter':
-      return jupiter.buildTx(quote, userAddress);
+      return jupiter.buildTx(quote, userAddress, opts);
     case 'kyberswap':
       return kyberswap.buildTx(quote, userAddress);
     default:

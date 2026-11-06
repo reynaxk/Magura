@@ -66,6 +66,7 @@ export class UsersController {
                 slippageBps: z.number().int().min(10).max(5000),
                 buy: z.record(z.string(), z.array(z.string().regex(/^\d+(\.\d+)?$/)).length(4)),
                 sell: z.array(z.number().int().min(1).max(100)).length(4),
+                priorityFeeSol: z.string().regex(/^\d+(\.\d+)?$/).refine((v) => Number(v) <= 0.1, 'max_0.1').optional(),
               }),
             )
             .length(3),

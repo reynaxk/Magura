@@ -132,7 +132,7 @@ export default function TrenchesPage() {
     const amount = amountOverride ?? amountFor(t);
     setBuying(t.address);
     try {
-      const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: presetFor(t)?.slippageBps ?? 1500, wallet } });
+      const q = await api<{ quoteId: string }>('/swap/quote', { body: { chain: t.chain, side: 'buy', token: t.address, amount, slippageBps: presetFor(t)?.slippageBps ?? 1500, wallet, ...(t.chain === 'solana' && presetFor(t)?.priorityFeeSol ? { priorityFeeSol: Number(presetFor(t)!.priorityFeeSol) } : {}) } });
       const tx = await api<SwapTx>('/swap/build', { body: { quoteId: q.quoteId } });
       const txHash = await sendSwap(tx);
       soundFor('buy');

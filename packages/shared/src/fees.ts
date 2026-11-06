@@ -87,6 +87,8 @@ export const GAS_RESERVE: Record<ChainId, { human: string; base: string }> = {
 export interface TradePreset {
   name: string;
   slippageBps: number;
+  /** Solana priority fee cap in SOL (Jupiter 'veryHigh' up to this); empty = auto */
+  priorityFeeSol?: string;
   buy: Record<string, string[]>;
   sell: number[];
 }

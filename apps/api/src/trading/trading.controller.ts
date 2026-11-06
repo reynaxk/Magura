@@ -31,6 +31,7 @@ export class TradingController {
         amount: z.string().regex(/^\d+(\.\d+)?$/),
         slippageBps: z.number().int().min(10).max(5000).default(100),
         wallet: z.string().min(32).max(64),
+        priorityFeeSol: z.number().min(0).max(0.1).optional(),
       }),
       body,
     );

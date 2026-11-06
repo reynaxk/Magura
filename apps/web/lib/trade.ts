@@ -69,7 +69,15 @@ export function useInstantTrade(target: TradeTarget | null) {
           amount = pct >= 100 ? bal.amount : ((BigInt(bal.amount) * BigInt(Math.round(pct * 100))) / 10_000n).toString();
         }
         const quote = await api<Quote>('/swap/quote', {
-          body: { chain: target.chain, side, token: target.token, amount, slippageBps: preset.slippageBps, wallet },
+          body: {
+            chain: target.chain,
+            side,
+            token: target.token,
+            amount,
+            slippageBps: preset.slippageBps,
+            wallet,
+            ...(target.chain === 'solana' && preset.priorityFeeSol ? { priorityFeeSol: Number(preset.priorityFeeSol) } : {}),
+          },
         });
         const tx = await api<SwapTx>('/swap/build', { body: { quoteId: quote.quoteId } });
         const txHash = await sendSwap(tx);

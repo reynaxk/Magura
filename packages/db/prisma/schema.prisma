@@ -204,8 +204,14 @@ model Token {
   pairAddress  String?
   risk         Json? // TokenRisk from GoPlus
   riskCheckedAt DateTime?
+  /// TokenIntel: supply split by wallet type, built from the launch trade stream
+  intel        Json?
+  athMarketCapUsd Float?
+  /// when the dev last sold (drives "sell on dev sell" automations)
+  devSoldAt    DateTime?
 
   @@id([chain, address])
+  @@index([creator])
   @@index([stage, createdAt])
   @@index([chain, stage, createdAt])
 }

@@ -12,12 +12,13 @@ import {
   type LaunchpadFeed,
 } from '@magura/chains';
 import type { Chain, Token } from '@magura/db';
-import { CHAIN_IDS, matchesFilter, roomIds, type ChainId, type CoinFilter, type TokenRisk, type TrenchStage, type TrenchToken } from '@magura/shared';
+import { CHAIN_IDS, matchesFilter, roomIds, type ChainId, type CoinFilter, type TokenIntel, type TokenRisk, type TrenchStage, type TrenchToken } from '@magura/shared';
 import { factsFor } from './filter-facts';
 import { env } from '../config';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { RealtimeService } from '../realtime/realtime.service';
+import { IntelService } from './intel.service';
 
 /** Stage thresholds. Launchpad tokens use the bonding curve; DEX-native tokens use age + market cap. */
 const ALMOST_BONDING_PCT = 70;
@@ -47,6 +48,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     private readonly redis: RedisService,
     private readonly rt: RealtimeService,
     private readonly chat: ChatService,
+    private readonly intel: IntelService,
   ) {}
 
   async onModuleInit() {
@@ -99,12 +101,19 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       migratedAt: e.type === 'migrated' ? e.at : (existing?.migratedAt ?? null),
     };
     const stage = stageFor({ ...data, liquidityUsd: existing?.liquidityUsd ?? null, createdAt: existing?.createdAt ?? e.at });
+    // wallet ledger (dev / snipers / bundlers …) is updated on every trade, before the write throttle
+    if (e.type === 'created') {
+      const curve = e.launchpad === 'pumpfun' || e.launchpad === 'fourmeme' || e.launchpad === 'flap' || e.launchpad === 'pons';
+      await this.intel.onLaunch(e.chain, e.address, e.creator ?? null, e.at, curve);
+    }
+    if (e.trade) await this.intel.onTrade(e.chain, e.address, e.trade, e.at).catch((err) => this.log.debug(`intel: ${(err as Error).message}`));
     // throttle progress writes: at most once per 3s per token
     if (e.type === 'progress' && !(await this.redis.allow(`tp:${e.chain}:${e.address}`, 1, 3)) && stage === existing?.stage) return;
+    const ath = Math.max(existing?.athMarketCapUsd ?? 0, data.marketCapUsd ?? 0) || null;
     const token = await this.prisma.db.token.upsert({
       where,
-      update: { ...data, stage },
-      create: { chain: e.chain as Chain, address: e.address, ...data, stage, createdAt: e.at },
+      update: { ...data, stage, athMarketCapUsd: ath },
+      create: { chain: e.chain as Chain, address: e.address, ...data, stage, createdAt: e.at, athMarketCapUsd: ath },
     });
     if (e.type === 'created' && e.metadataUri) void this.applyMetadata(e.chain as Chain, e.address, e.metadataUri);
     const room = `trenches:${e.chain}`;
@@ -245,10 +254,34 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
     const pool = await this.prisma.db.token.findMany({ where: { chain: { in: filter.chains }, stage }, orderBy, take: 500 });
     const counts = await this.chat.coinRoomCounts(pool.map((t) => roomIds.coin(t.chain, t.address)));
     const friends = viewerId ? await this.friendsBought(viewerId, pool) : [];
-    const friendSet = new Set(friends.map((f) => f.tokenAddress));
-    const matched = pool.filter((t) => matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), filter));
+    const friendCount = new Map<string, number>();
+    for (const f of friends) friendCount.set(f.tokenAddress, (friendCount.get(f.tokenAddress) ?? 0) + 1);
+    const devs = await this.devStats(pool, filter);
+    const matched = pool.filter((t) =>
+      matchesFilter(
+        factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendCount.has(t.address), friendCount.get(t.address) ?? 0, t.creator ? devs.get(`${t.chain}|${t.creator}`) : null),
+        filter,
+      ),
+    );
     const items = await Promise.all(matched.slice(0, Math.min(limit, 100)).map((t) => this.toTrench(t, counts, friends)));
     return { items, total: matched.length };
+  }
+
+  /** Launch / migration counts per creator — only queried when a dev filter is set. */
+  private async devStats(pool: Token[], filter: CoinFilter) {
+    const out = new Map<string, { launched: number; migratedPct: number }>();
+    if (!filter.ranges.devLaunched && !filter.ranges.devMigratedPct) return out;
+    const creators = [...new Set(pool.map((t) => t.creator).filter((c): c is string => !!c))];
+    if (!creators.length) return out;
+    const rows = await this.prisma.db.token.groupBy({ by: ['chain', 'creator'], where: { creator: { in: creators } }, _count: { _all: true } });
+    const mig = await this.prisma.db.token.groupBy({ by: ['chain', 'creator'], where: { creator: { in: creators }, migratedAt: { not: null } }, _count: { _all: true } });
+    const migMap = new Map(mig.map((m) => [`${m.chain}|${m.creator}`, m._count._all]));
+    for (const r of rows) {
+      const k = `${r.chain}|${r.creator}`;
+      const n = r._count._all;
+      out.set(k, { launched: n, migratedPct: n ? Math.round(((migMap.get(k) ?? 0) / n) * 100) : 0 });
+    }
+    return out;
   }
 
   /** "kairo +2 aped" — people you follow who bought this token. */
@@ -288,6 +321,18 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       buys: t.buys,
       sells: t.sells,
       risk: (t.risk as TokenRisk | null) ?? null,
+      intel: (t.intel as TokenIntel | null) ?? null,
+      creator: t.creator,
+      athMarketCapUsd: t.athMarketCapUsd,
+      liquidityUsd: t.liquidityUsd,
+      volume5m: t.volume5m,
+      buys5m: t.buys5m,
+      sells5m: t.sells5m,
+      priceChange1h: t.priceChange1h,
+      hasX: t.hasX,
+      hasTelegram: t.hasTelegram,
+      hasWebsite: t.hasWebsite,
+      devSold: !!t.devSoldAt,
       chatCount: counts[roomIds.coin(t.chain, t.address)] ?? 0,
       friendsBought: friends
         .filter((f) => f.tokenAddress === t.address)

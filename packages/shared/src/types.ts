@@ -1,4 +1,5 @@
 import type { ChainId, LaunchpadId } from './chains';
+import type { TokenIntel } from './intel';
 
 /** Trenches stages — named the way Magura users talk. */
 export type TrenchStage = 'new' | 'almost' | 'survived';
@@ -33,6 +34,19 @@ export interface TrenchToken {
   buys: number | null;
   sells: number | null;
   risk: TokenRisk | null;
+  /** Supply split by wallet type (launchpad coins). */
+  intel?: TokenIntel | null;
+  creator?: string | null;
+  athMarketCapUsd?: number | null;
+  liquidityUsd?: number | null;
+  volume5m?: number | null;
+  buys5m?: number | null;
+  sells5m?: number | null;
+  priceChange1h?: number | null;
+  hasX?: boolean;
+  hasTelegram?: boolean;
+  hasWebsite?: boolean;
+  devSold?: boolean;
   /** Social layer */
   chatCount: number;
   friendsBought: { userId: string; handle: string; avatarUrl: string | null }[];

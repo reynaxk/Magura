@@ -44,22 +44,33 @@ export function sourceOf(launchpad: string | null, dex: string | null): SourceId
 
 export type Range = { min?: number; max?: number };
 
+/** group: which section of the Filters panel the field lives in. */
 export const RANGE_FIELDS = [
-  { key: 'bonding', label: 'Bonding curve', unit: '%' },
-  { key: 'ageMin', label: 'Age', unit: 'min' },
-  { key: 'liquidity', label: 'Liquidity', unit: '$' },
-  { key: 'marketCap', label: 'Market cap', unit: '$' },
-  { key: 'volume5m', label: 'Volume 5m', unit: '$' },
-  { key: 'netBuys5m', label: 'Net buys 5m', unit: '' },
-  { key: 'holders', label: 'Holders', unit: '' },
-  { key: 'buys5m', label: 'Buys 5m', unit: '' },
-  { key: 'sells5m', label: 'Sells 5m', unit: '' },
-  { key: 'top10', label: 'Top 10 holding', unit: '%' },
-  { key: 'dev', label: 'Dev holding', unit: '%' },
-  { key: 'snipers', label: 'Snipers', unit: '%' },
-  { key: 'change1h', label: 'Price change 1h', unit: '%' },
-  { key: 'chat', label: 'Room messages', unit: '' },
+  { key: 'bonding', label: 'Bonding curve', unit: '%', group: 'market' },
+  { key: 'ageMin', label: 'Age', unit: 'min', group: 'market' },
+  { key: 'liquidity', label: 'Liquidity', unit: '$', group: 'market' },
+  { key: 'marketCap', label: 'Market cap', unit: '$', group: 'market' },
+  { key: 'athMc', label: 'ATH market cap', unit: '$', group: 'market' },
+  { key: 'volume5m', label: 'Volume 5m', unit: '$', group: 'market' },
+  { key: 'netBuys5m', label: 'Net buys 5m', unit: '', group: 'market' },
+  { key: 'buys5m', label: 'Buys 5m', unit: '', group: 'market' },
+  { key: 'sells5m', label: 'Sells 5m', unit: '', group: 'market' },
+  { key: 'change1h', label: 'Price change 1h', unit: '%', group: 'market' },
+  { key: 'holders', label: 'Holders', unit: '', group: 'holders' },
+  { key: 'top10', label: 'Top 10 holding', unit: '%', group: 'holders' },
+  { key: 'dev', label: 'Dev holding', unit: '%', group: 'holders' },
+  { key: 'snipers', label: 'Snipers hold', unit: '%', group: 'holders' },
+  { key: 'bundlers', label: 'Bundlers hold', unit: '%', group: 'holders' },
+  { key: 'insiders', label: 'Insiders hold', unit: '%', group: 'holders' },
+  { key: 'fresh', label: 'Fresh wallets hold', unit: '%', group: 'holders' },
+  { key: 'earlyHold', label: 'First 70 still hold', unit: '%', group: 'holders' },
+  { key: 'devLaunched', label: 'Dev coins launched', unit: '', group: 'dev' },
+  { key: 'devMigratedPct', label: 'Dev migration rate', unit: '%', group: 'dev' },
+  { key: 'chat', label: 'Room messages', unit: '', group: 'social' },
+  { key: 'friends', label: 'Friends bought', unit: '', group: 'social' },
 ] as const;
+
+export type RangeGroup = (typeof RANGE_FIELDS)[number]['group'];
 
 export type RangeKey = (typeof RANGE_FIELDS)[number]['key'];
 
@@ -75,6 +86,13 @@ export interface CoinFilter {
   excludeFreezable: boolean;
   auditedOnly: boolean;
   friendsBought: boolean;
+  /** dev behaviour */
+  devSoldAll?: boolean;
+  devStillHolding?: boolean;
+  /** text */
+  keywords?: string;
+  excludeKeywords?: string;
+  devWallet?: string;
   ranges: Partial<Record<RangeKey, Range>>;
 }
 
@@ -89,6 +107,11 @@ export const EMPTY_FILTER: CoinFilter = {
   excludeFreezable: false,
   auditedOnly: false,
   friendsBought: false,
+  devSoldAll: false,
+  devStillHolding: false,
+  keywords: '',
+  excludeKeywords: '',
+  devWallet: '',
   ranges: {},
 };
 
@@ -97,7 +120,8 @@ export function activeFilterCount(f: CoinFilter): number {
   let n = 0;
   if (f.chains.length < 4) n++;
   if (f.sources.length) n++;
-  for (const k of ['hasX', 'hasTelegram', 'hasWebsite', 'devUnder20', 'excludeMintable', 'excludeFreezable', 'auditedOnly', 'friendsBought'] as const) if (f[k]) n++;
+  for (const k of ['hasX', 'hasTelegram', 'hasWebsite', 'devUnder20', 'excludeMintable', 'excludeFreezable', 'auditedOnly', 'friendsBought', 'devSoldAll', 'devStillHolding'] as const) if (f[k]) n++;
+  for (const k of ['keywords', 'excludeKeywords', 'devWallet'] as const) if (f[k]?.trim()) n++;
   for (const r of Object.values(f.ranges)) if (r && (r.min != null || r.max != null)) n++;
   return n;
 }
@@ -117,6 +141,19 @@ export interface FilterFacts {
   top10: number | null;
   dev: number | null;
   snipers: number | null;
+  bundlers?: number | null;
+  insiders?: number | null;
+  fresh?: number | null;
+  earlyHold?: number | null;
+  athMc?: number | null;
+  devLaunched?: number | null;
+  devMigratedPct?: number | null;
+  friends?: number;
+  devSoldAll?: boolean | null;
+  devHolds?: boolean | null;
+  name?: string;
+  symbol?: string;
+  creator?: string | null;
   change1h: number | null;
   chat: number;
   hasX: boolean;
@@ -143,6 +180,14 @@ export function matchesFilter(c: FilterFacts, f: CoinFilter): boolean {
   if (f.excludeFreezable && c.freezable === true) return false;
   if (f.auditedOnly && !c.audited) return false;
   if (f.friendsBought && !c.friendsBought) return false;
+  if (f.devSoldAll && c.devSoldAll !== true) return false;
+  if (f.devStillHolding && c.devHolds !== true) return false;
+  if (f.devWallet?.trim() && (c.creator ?? '').toLowerCase() !== f.devWallet.trim().toLowerCase()) return false;
+  const text = `${c.symbol ?? ''} ${c.name ?? ''}`.toLowerCase();
+  const words = (s?: string) => (s ?? '').toLowerCase().split(/[\s,]+/).filter(Boolean);
+  const inc = words(f.keywords);
+  if (inc.length && !inc.some((w) => text.includes(w))) return false;
+  if (words(f.excludeKeywords).some((w) => text.includes(w))) return false;
   const value: Record<RangeKey, number | null> = {
     bonding: c.bonding,
     ageMin: c.ageMin,
@@ -156,6 +201,14 @@ export function matchesFilter(c: FilterFacts, f: CoinFilter): boolean {
     top10: c.top10,
     dev: c.dev,
     snipers: c.snipers,
+    bundlers: c.bundlers ?? null,
+    insiders: c.insiders ?? null,
+    fresh: c.fresh ?? null,
+    earlyHold: c.earlyHold ?? null,
+    athMc: c.athMc ?? null,
+    devLaunched: c.devLaunched ?? null,
+    devMigratedPct: c.devMigratedPct ?? null,
+    friends: c.friends ?? 0,
     change1h: c.change1h,
     chat: c.chat,
   };

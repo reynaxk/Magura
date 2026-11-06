@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { Cron } from '@nestjs/schedule';
 import { dexscreener, fetchNews, geckoterminal, goplus, jupiter, polymarket } from '@magura/chains';
 import type { User } from '@magura/db';
-import { parseFilter, type ChainId, type Timeframe } from '@magura/shared';
+import { WALLET_TAGS, parseFilter, type ChainId, type HolderSort, type Timeframe, type TokenIntel, type WalletTag } from '@magura/shared';
 import { CurrentUser, OptionalUser, Public } from '../auth/auth.guard';
 import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain } from '../common/zod';
 import { HuntService, type HuntSort } from './hunt.service';
 import { TrenchesService } from './trenches.service';
 import { CoinActivityService } from './coin-activity.service';
+import { IntelService } from './intel.service';
 
 const addr = (chain: ChainId, a: string) => (chain === 'solana' ? a : a.toLowerCase());
 
@@ -21,6 +22,7 @@ export class MarketController {
     private readonly trenches: TrenchesService,
     private readonly hunt: HuntService,
     private readonly activity: CoinActivityService,
+    private readonly intel: IntelService,
   ) {}
 
   /** Hunt: discover coins. `f` = JSON CoinFilter from the Filters panel; `count=1` returns only the match count. */
@@ -103,6 +105,39 @@ export class MarketController {
   coinHolders(@Param('chain') c: string, @Param('address') a: string, @OptionalUser() user?: User) {
     const chain = parse(zChain, c);
     return this.activity.holders(chain, addr(chain, a), user?.id ?? null);
+  }
+
+  /**
+   * Wallet table from our launch ledger: tags, entry, PnL. `sort` = holding | pnl | early | bought
+   * (Holders, Top traders, Early buyers tabs). `tag` filters to one wallet type. Returns rows: null
+   * for coins we didn't see launch — the web falls back to /holders.
+   */
+  @Public()
+  @Get('tokens/:chain/:address/wallets')
+  async coinWallets(@Param('chain') c: string, @Param('address') a: string, @Query('sort') sortRaw = 'holding', @Query('tag') tagRaw?: string) {
+    const chain = parse(zChain, c);
+    const address = addr(chain, a);
+    const sort: HolderSort = (['holding', 'pnl', 'early', 'bought'] as const).includes(sortRaw as HolderSort) ? (sortRaw as HolderSort) : 'holding';
+    const tag = WALLET_TAGS.some((t) => t.id === tagRaw) ? (tagRaw as WalletTag) : null;
+    const [row, majors] = await Promise.all([
+      this.prisma.db.token.findUnique({ where: { chain_address: { chain, address } }, select: { priceUsd: true, marketCapUsd: true, intel: true, creator: true } }),
+      this.redis.client.get('majors'),
+    ]);
+    const px = majors ? (JSON.parse(majors) as Record<string, number>) : {};
+    const nativeUsd = chain === 'solana' ? px.SOL : chain === 'bsc' ? px.BNB : px.ETH;
+    // curve coins: 1B supply → price from market cap when the pair price isn't known yet
+    const priceUsd = row?.priceUsd ?? (row?.marketCapUsd ? row.marketCapUsd / 1e9 : null);
+    const priceNative = priceUsd && nativeUsd ? priceUsd / nativeUsd : null;
+    const rows = await this.intel.holders(chain, address, sort, tag, priceNative, 100);
+    return { rows, nativeUsd: nativeUsd ?? null, intel: (row?.intel as TokenIntel | null) ?? null, creator: row?.creator ?? null };
+  }
+
+  /** Dev report card: launches, migrations, quick rugs, best coin. */
+  @Public()
+  @Get('dev/:chain/:creator')
+  devReport(@Param('chain') c: string, @Param('creator') creator: string) {
+    const chain = parse(zChain, c);
+    return this.redis.cached(`devr:${chain}:${creator}`, 30, () => this.intel.devReport(chain, addr(chain, creator)));
   }
 
   /** Buys and sells by people you follow — chart markers. */

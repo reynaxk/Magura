@@ -58,6 +58,17 @@ export class PumpFunFeed implements LaunchpadFeed {
             marketCapUsd: m.marketCapSol ? m.marketCapSol * this.solUsd : null,
             bondingPct: m.vSolInBondingCurve ? pumpBondingPct(m.vSolInBondingCurve) : 0,
             metadataUri: m.uri,
+            trade:
+              m.traderPublicKey && Number(m.initialBuy) > 0
+                ? {
+                    wallet: m.traderPublicKey,
+                    side: 'buy',
+                    tokenAmount: Number(m.initialBuy),
+                    nativeAmount: Number(m.solAmount) || 0,
+                    balanceAfter: Number(m.initialBuy),
+                    signature: m.signature,
+                  }
+                : undefined,
             at: new Date(),
           });
         } else if ((m.txType === 'buy' || m.txType === 'sell') && m.mint) {
@@ -68,6 +79,16 @@ export class PumpFunFeed implements LaunchpadFeed {
             address: m.mint,
             marketCapUsd: m.marketCapSol ? m.marketCapSol * this.solUsd : null,
             bondingPct: m.vSolInBondingCurve ? pumpBondingPct(m.vSolInBondingCurve) : null,
+            trade: m.traderPublicKey
+              ? {
+                  wallet: m.traderPublicKey,
+                  side: m.txType,
+                  tokenAmount: Number(m.tokenAmount) || 0,
+                  nativeAmount: Number(m.solAmount) || 0,
+                  balanceAfter: m.newTokenBalance != null ? Number(m.newTokenBalance) : null,
+                  signature: m.signature,
+                }
+              : undefined,
             at: new Date(),
           });
         } else if (m.txType === 'migrate' || (m.mint && m.pool)) {

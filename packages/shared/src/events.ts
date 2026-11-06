@@ -15,6 +15,8 @@ export interface ServerToClientEvents {
   'chat:typing': (p: { roomId: string; userId: string; handle: string }) => void;
   'trenches:token': (t: TrenchToken) => void;
   'trenches:update': (t: Partial<TrenchToken> & { chain: string; address: string }) => void;
+  /** The coin's creator sold (soldAll = dumped everything). */
+  'coin:devsell': (e: { chain: string; address: string; soldAll: boolean; at: string }) => void;
   'copy:executed': (p: { subscriptionId: string; side: 'buy' | 'sell'; symbol: string; amountUsd: number; txHash: string | null }) => void;
   'order:fired': (p: { orderId: string; kind: string; side: 'buy' | 'sell'; symbol: string; chain: string; token: string; needsConfirm: boolean; txHash: string | null }) => void;
   'copy:confirm': (p: { executionId: string; leader: string; side: 'buy' | 'sell'; symbol: string; amountUsd: number }) => void;

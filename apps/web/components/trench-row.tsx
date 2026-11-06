@@ -26,6 +26,7 @@ export const TrenchRow = memo(function TrenchRow({
   onOpen,
   onBuy,
   buying,
+  onHover,
 }: {
   t: TrenchToken;
   accent: string;
@@ -34,12 +35,14 @@ export const TrenchRow = memo(function TrenchRow({
   onOpen: () => void;
   onBuy: (amount: string) => void;
   buying: boolean;
+  /** hover hotkeys: the page tracks which row the pointer is on */
+  onHover?: (on: boolean) => void;
 }) {
   const i = t.intel ?? null;
   const pct = Math.max(0, Math.min(100, t.bondingPct ?? 0));
   const holders = i?.holders ?? t.holders;
   return (
-    <article onClick={onOpen} className="group relative flex cursor-pointer gap-2.5 border-b border-line px-2.5 py-2 transition-colors hover:bg-hover">
+    <article onClick={onOpen} onMouseEnter={() => onHover?.(true)} onMouseLeave={() => onHover?.(false)} className="group relative flex cursor-pointer gap-2.5 border-b border-line px-2.5 py-2 transition-colors hover:bg-hover">
       <span className="relative shrink-0">
         <Avatar name={t.symbol} src={t.imageUrl} size={40} shape={prefs.logo === 'circle' ? 'circle' : undefined} />
         {t.stage !== 'survived' && t.bondingPct != null && (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CHAINS, activeFilterCount, fmtAge, fmtUsd, roomIds, type CoinFilter, type SwapTx, type TrenchStage, type TrenchToken } from '@magura/shared';
 import { FilterButton, FilterPanel, useStoredFilter } from '@/components/filter-panel';
@@ -57,6 +57,24 @@ export default function TrenchesPage() {
   const colOf = (stage: TrenchStage) => cols[stage] ?? { q: '', p: 0 };
   const setCol = (stage: TrenchStage, patch: Partial<{ q: string; p: number }>) => setCols({ ...cols, [stage]: { ...colOf(stage), ...patch } });
   const presetFor = (t: TrenchToken) => presets[colOf(t.stage).p] ?? presets[0];
+  // hover a coin, press 1–4 to buy with that column's preset amounts, Enter to open it
+  const hovered = useRef<TrenchToken | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!hovered.current || e.metaKey || e.ctrlKey || e.altKey || (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable))) return;
+      const t = hovered.current;
+      if (e.key === 'Enter') return router.push(`/t/${t.chain}/${t.address}`);
+      const i = ['1', '2', '3', '4'].indexOf(e.key);
+      if (i < 0) return;
+      const amt = presetFor(t)?.buy[t.chain]?.[i];
+      if (!amt) return;
+      e.preventDefault();
+      void quickBuy(t, amt);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   const amountFor = (t: TrenchToken) => presetFor(t)?.buy[t.chain]?.[0] ?? ((me?.settings?.quickBuyAmounts ?? {}) as Record<string, string>)[t.chain] ?? '0.1';
   const [, tick] = useState(0);
   const keyOf = (stage: TrenchStage) => JSON.stringify(filters[stage][0]);
@@ -149,7 +167,7 @@ export default function TrenchesPage() {
           {paused ? 'Paused' : 'Live'}
         </button>
         <span className="ml-auto hidden items-center gap-2 rounded-xl border border-line-2 bg-raised px-3 py-2 text-xs text-muted xl:flex">
-          <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Quick buy amounts live in{' '}
+          <Svg d={Icon.bolt} size={14} color="#2FE39A" /> Hover a coin + <kbd className="num rounded border border-line-3 px-1 text-[10px] text-text-2">1</kbd>–<kbd className="num rounded border border-line-3 px-1 text-[10px] text-text-2">4</kbd> to buy · amounts in{' '}
           <Link href="/settings" className="text-lime">
             Settings
           </Link>
@@ -258,6 +276,7 @@ export default function TrenchesPage() {
                         onOpen={() => router.push(`/t/${t.chain}/${t.address}`)}
                         onBuy={(amt) => quickBuy(t, amt)}
                         buying={buying === t.address}
+                        onHover={(on) => (hovered.current = on ? t : hovered.current === t ? null : hovered.current)}
                       />
                     ) : (
                       <TrenchCard

@@ -289,6 +289,55 @@ h1 .w>span{display:inline-block;transform:translateY(105%);animation:rise 1s var
 @media (max-width:1100px){.board{grid-template-columns:1fr 1fr}.bcol:nth-child(3){display:none}.swr{grid-template-columns:24px 1.5fr 1fr 1fr 110px}.swr>:nth-child(5),.swr>:nth-child(6),.swr>:nth-child(7){display:none}.b-port{grid-template-columns:1fr}.idx{grid-template-columns:1fr 1fr}.idx>div:nth-child(3){border-left:0}.idx>div:nth-child(n+3){border-top:1px solid var(--b1)}}
 @media (max-width:760px){.board{grid-template-columns:1fr}.bcol:nth-child(2){display:none}.bcol+.bcol{border-left:0}.swr{grid-template-columns:22px 1.4fr 1fr 70px;gap:8px}.swr>:nth-child(4){display:none}.swr .act span:first-child{display:none}.swr .w .tg{display:none}.swr>span{white-space:nowrap}.idx{grid-template-columns:1fr}.idx>div{border-left:0!important;border-top:1px solid var(--b1)}.idx>div:first-child{border-top:0}.cal .d{font-size:0}.cal .d b{font-size:8px}}
 
+/* chains v2 */
+.clist2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px}
+.cc{position:relative;border:1px solid var(--b1);border-radius:14px;padding:14px;background:rgba(11,15,17,.75);overflow:hidden;font-family:var(--mono);transition:border-color .3s,transform .3s var(--ease)}
+.cc:hover{border-color:var(--b2);transform:translateY(-2px)}
+.cc::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--cc);opacity:.8}
+.cc .hd{display:flex;align-items:center;gap:8px;font:700 14px var(--sans);color:var(--tx)}
+.cc .hd .lv{margin-left:auto;display:flex;align-items:center;gap:5px;font:600 9px var(--mono);letter-spacing:.12em;color:var(--g)}
+.cc .src{font-size:10.5px;color:var(--mu);margin-top:3px}
+.cc .ct{display:flex;align-items:flex-end;justify-content:space-between;margin-top:12px}
+.cc .ct div{font-size:9px;color:var(--dim);letter-spacing:.1em}
+.cc .ct b{display:block;font:700 18px var(--mono);color:var(--tx);letter-spacing:-.02em;margin-top:2px}
+.cc svg{width:90px;height:30px}
+.portv{position:absolute;left:50%;top:calc(50% + 70px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font:500 9.5px var(--mono);letter-spacing:.12em;color:var(--dim);white-space:nowrap}
+.portv b{font:700 18px var(--mono);letter-spacing:-.02em;color:var(--tx);margin-top:2px}
+.coreM::after{content:"";position:absolute;inset:-14px;border-radius:36px;border:1px solid rgba(47,227,154,.35);animation:corep 2.6s ease-out infinite}
+@keyframes corep{from{transform:scale(.9);opacity:1}to{transform:scale(1.35);opacity:0}}
+
+/* loop v2 */
+.lmini{margin-top:20px;border:1px solid #1A1D25;border-radius:12px;background:#08090C;padding:12px;font:500 11px var(--mono);height:116px;position:relative;overflow:hidden}
+.lm-match{display:flex;align-items:center;gap:10px;animation:slidein .6s var(--ease)}
+.lm-match .a{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font:800 11px var(--sans);color:#04140C;flex:none}
+.lm-match b{font:700 13px var(--sans);color:var(--tx)}
+.lm-tags{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.lm-tags .tg{font-size:8.5px;padding:1px 5px}
+.lm-filt{margin-top:9px;color:var(--dim);font-size:10px}.lm-filt b{color:var(--g);font-weight:600}
+.lm-fill{display:flex;flex-direction:column;gap:7px}
+.lm-fill div{display:flex;align-items:center;gap:8px;animation:slidein .5s var(--ease)}
+.lm-fill .k{font:700 10px var(--mono);border:1px solid var(--b2);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--tx)}
+.lm-fill .ms{margin-left:auto;color:var(--dim)}
+.lm-bars{display:flex;align-items:flex-end;gap:4px;height:62px;margin-top:6px}
+.lm-bars i{flex:1;border-radius:2px 2px 0 0;transition:height .8s var(--ease)}
+.lm-tot{display:flex;justify-content:space-between;color:var(--dim);font-size:10px}.lm-tot b{color:var(--g);font-weight:700;font-size:13px}
+
+/* final v2 */
+.final{padding:200px 0 150px}
+.marq{position:absolute;left:0;right:0;top:58%;transform:translateY(-50%) rotate(-4deg);display:flex;flex-direction:column;gap:14px;z-index:-1;opacity:.22;filter:blur(.5px);-webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent);mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent);pointer-events:none}
+.mrow{display:flex;gap:14px;width:max-content;animation:tick 70s linear infinite}
+.mrow.rev{animation-direction:reverse;animation-duration:85s}
+.mcard{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--b1);border-radius:12px;background:rgba(11,15,17,.9);font:500 11px var(--mono);color:var(--mu);white-space:nowrap}
+.mcard .av{width:26px;height:26px;border-radius:7px;font-size:9px}
+.mcard b{font:700 13px var(--sans);color:var(--tx)}
+.mcard .p{font:700 15px var(--mono);color:var(--g)}
+.final .glow{width:1000px;height:560px}
+.final h2{text-shadow:0 0 80px rgba(5,6,7,.9)}
+.inst{display:flex;justify-content:center;gap:10px;margin-top:26px;flex-wrap:wrap}
+.inst span{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px;border:1px solid var(--b2);border-radius:99px;background:rgba(11,15,17,.8);font:500 11.5px var(--mono);color:var(--mu)}
+.inst svg{width:14px;height:14px}
+@media (max-width:760px){.clist2{grid-template-columns:1fr}.portv{top:calc(50% + 62px)}}
+
 /* sections */
 section{position:relative}
 .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
@@ -759,12 +808,12 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
       <div>
         <div class="kick rv">05 / MULTICHAIN</div>
         <h2 class="rv" style="--d:.06s">Four chains. <em>One terminal.</em></h2>
-        <p class="lede rv" style="--d:.12s">One wallet, one feed, one portfolio across every chain where the action is. Switch chains without switching apps.</p>
-        <div class="clist rv" style="--d:.18s">
-          <div><b><i class="sq" style="background:#9945FF"></i>Solana</b>pump.fun launches, live curve</div>
-          <div><b><i class="sq" style="background:#0052FF"></i>Base</b>New pairs as they list</div>
-          <div><b><i class="sq" style="background:#F0B90B"></i>BNB Chain</b>Fresh launches, fast fills</div>
-          <div><b><i class="sq" style="background:#8C9EFF"></i>Ethereum</b>The deepest liquidity</div>
+        <p class="lede rv" style="--d:.12s">One wallet, one feed, one portfolio across every chain where the action is. New pairs are picked up from each chain's launchpads and DEXs the moment they list.</p>
+        <div class="clist2 rv" style="--d:.18s">
+          <div class="cc" style="--cc:#9945FF"><div class="hd"><i class="sq" style="background:#9945FF"></i>Solana<span class="lv"><span class="dot"></span>LIVE</span></div><div class="src">pump.fun · Raydium · PumpSwap</div><div class="ct"><div>NEW PAIRS TODAY<b data-cn="0">18,402</b></div><svg viewBox="0 0 90 30" data-sp="0"></svg></div></div>
+          <div class="cc" style="--cc:#0052FF"><div class="hd"><i class="sq" style="background:#0052FF"></i>Base<span class="lv"><span class="dot"></span>LIVE</span></div><div class="src">Clanker · Uniswap</div><div class="ct"><div>NEW PAIRS TODAY<b data-cn="1">2,914</b></div><svg viewBox="0 0 90 30" data-sp="1"></svg></div></div>
+          <div class="cc" style="--cc:#F0B90B"><div class="hd"><i class="sq" style="background:#F0B90B"></i>BNB Chain<span class="lv"><span class="dot"></span>LIVE</span></div><div class="src">PancakeSwap</div><div class="ct"><div>NEW PAIRS TODAY<b data-cn="2">1,388</b></div><svg viewBox="0 0 90 30" data-sp="2"></svg></div></div>
+          <div class="cc" style="--cc:#8C9EFF"><div class="hd"><i class="sq" style="background:#8C9EFF"></i>Ethereum<span class="lv"><span class="dot"></span>LIVE</span></div><div class="src">Uniswap</div><div class="ct"><div>NEW PAIRS TODAY<b data-cn="3">426</b></div><svg viewBox="0 0 90 30" data-sp="3"></svg></div></div>
         </div>
       </div>
       <div class="orbit rv" style="--d:.1s" aria-hidden="true">
@@ -778,6 +827,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
           <div class="node" style="left:100%;top:50%"><div class="in"><i class="sq" style="background:#8C9EFF"></i>ETH</div></div>
         </div>
         <div class="coreM"><svg width="54" height="54" viewBox="0 0 40 40"><g class="ring" style="transform-origin:20px 20px;animation:spin 14s linear infinite"><ellipse cx="20" cy="20" rx="18" ry="8" fill="none" stroke="#2FE39A" stroke-width="1.2" opacity=".8" transform="rotate(-24 20 20)"/></g><path d="M10 28V12l10 10 10-10v16" fill="none" stroke="#E8EDEC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="portv">UNIFIED PORTFOLIO<b id="portv">$48,210</b></div>
       </div>
     </div>
   </div>
@@ -788,9 +838,9 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
     <div class="kick rv">06 / THE LOOP</div>
     <h2 class="rv" style="--d:.06s">Three words. <em>One habit.</em></h2>
     <div class="loop" id="loopEl">
-      <div class="step" style="--d:0s"><div class="n">01</div><h3>Find.</h3><p>Trenches, trending and smart-money flow surface the coin while it's still early.</p><ul><li>50+ filters per column</li><li>Holder tags on every coin</li><li>Smart wallets ranked daily</li></ul></div>
-      <div class="step" style="--d:.5s"><div class="n">02</div><h3>Trade.</h3><p>One key to buy, auto orders to exit. Spot only, signed from your own wallet.</p><ul><li>Hotkey presets per column</li><li>TP, SL, trailing, DCA</li><li>Priority fee per preset</li></ul></div>
-      <div class="step" style="--d:1s"><div class="n">03</div><h3 class="shim">Repeat.</h3><p>Every trade feeds your PnL calendar, your groups and the wallets that follow you.</p><ul><li>Daily PnL calendar</li><li>Shareable PnL cards</li><li>Copy trading both ways</li></ul></div>
+      <div class="step" style="--d:0s"><div class="n">01</div><h3>Find.</h3><p>Trenches, trending and smart-money flow surface the coin while it's still early.</p><div class="lmini" id="lm1" aria-hidden="true"></div><ul><li>50+ filters per column</li><li>Holder tags on every coin</li><li>Smart wallets ranked daily</li></ul></div>
+      <div class="step" style="--d:.5s"><div class="n">02</div><h3>Trade.</h3><p>One key to buy, auto orders to exit. Spot only, signed from your own wallet.</p><div class="lmini" id="lm2" aria-hidden="true"></div><ul><li>Hotkey presets per column</li><li>TP, SL, trailing, DCA</li><li>Speed presets P1 · P2 · P3</li></ul></div>
+      <div class="step" style="--d:1s"><div class="n">03</div><h3 class="shim">Repeat.</h3><p>Every trade feeds your PnL calendar, your groups and the wallets that follow you.</p><div class="lmini" id="lm3" aria-hidden="true"></div><ul><li>Daily PnL calendar</li><li>Shareable PnL cards</li><li>Copy trading both ways</li></ul></div>
     </div>
   </div>
 </section>
@@ -823,6 +873,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
 </section>
 
 <section class="final">
+  <div class="marq" aria-hidden="true"><div class="mrow"></div><div class="mrow rev"></div><div class="mrow"></div></div>
   <div class="glow"></div>
   <div class="wrap">
     <h2 class="rv">FIND. <span class="d">TRADE.</span> <span class="shim">REPEAT.</span></h2>
@@ -831,6 +882,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
       <a href="/smart" class="btn btn-ghost btn-lg">See today's smart wallets</a>
     </div>
     <p class="note rv" style="--d:.2s">Sign in with email. No download needed.</p>
+    <div class="inst rv" style="--d:.26s"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Web · any browser</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>iPhone · Add to Home Screen</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Android · Install app</span></div>
   </div>
 </section>
 </main>
@@ -1018,6 +1070,26 @@ const CH={};
 /* funding */
 (()=>{ const v=$('#fundv'), ck=$('#chk'), A=[50,100,250,500,1000]; let cur=250;
   every(()=>{ const to=pick(A.filter(a=>a!==cur)), from=cur, s=performance.now(); ck.classList.remove('on'); (function f(t){ const k=Math.min(1,(t-s)/900), e=1-Math.pow(1-k,3); v.textContent='$'+Math.round(from+(to-from)*e).toLocaleString('en-US'); if(k<1&&!RM) requestAnimationFrame(f); else { cur=to; v.textContent='$'+to.toLocaleString('en-US'); setTimeout(()=>ck.classList.add('on'),250) } })(s) },3000) })();
+/* chains: live counters + sparklines + unified portfolio */
+(()=>{ const cn=$$('[data-cn]'); if(!cn.length) return; const v=[18402,2914,1388,426], rate=[3.2,.6,.3,.08], S=v.map(()=>Array.from({length:18},()=>rnd(.3,1)));
+  const draw=()=>$$('[data-sp]').forEach(s=>{ const p=S[+s.dataset.sp], d=p.map((y,i)=>`${i?'L':'M'}${(i/(p.length-1)*88+1).toFixed(1)},${(28-y*24).toFixed(1)}`).join(''); s.innerHTML=`<path d="${d} L89,30 L1,30Z" fill="rgba(47,227,154,.09)"/><path d="${d}" fill="none" stroke="#2FE39A" stroke-width="1.4"/>` });
+  draw(); let pv=48210;
+  every(()=>{ cn.forEach((e,i)=>{ v[i]+=Math.round(rnd(0,rate[i]*2)); e.textContent=v[i].toLocaleString('en-US') }); S.forEach(p=>{ p.shift(); p.push(rnd(.25,1)) }); draw(); pv+=rnd(-180,240); const e=$('#portv'); if(e) e.textContent='$'+Math.round(pv).toLocaleString('en-US') },1400) })();
+
+/* loop mini-UIs */
+(()=>{ const a=$('#lm1'), b=$('#lm2'), c=$('#lm3'); if(!a) return; const F=["Fresh & safe","Smart money in","Low bundlers","Migrating soon"], TG=[['smart','SMART ×3'],['fresh','LP BURNED'],['kol','KOL IN'],['dev','DEV HOLDING'],['whale','WHALE']];
+  const m=()=>{ const t=pick(TOK); a.innerHTML=`<div class="lm-match"><span class="a" style="background:${tokColor(t)}">${t.slice(0,2)}</span><div><b>${t}</b> <span class="g">${ri(1,9)}s old</span><div style="color:var(--mu);font-size:10.5px">MC ${usd(rnd(6e3,4e4))} · ${ri(20,180)} holders</div></div></div><div class="lm-tags">${TG.sort(()=>Math.random()-.5).slice(0,3).map(g=>`<span class="tg ${g[0]}">${g[1]}</span>`).join('')}</div><div class="lm-filt">Matched filter <b>“${pick(F)}”</b></div>` };
+  m(); every(m,2600);
+  const L=[]; const f=()=>{ const t=pick(TOK), k=ri(1,4), s=['0.1','0.5','1','5'][k-1]; const rows=[`<span class="k">${k}</span><span>Bought <b style="color:var(--tx)">${s} SOL</b> ${t}</span><span class="ms">${ri(380,900)}ms</span>`,`<span class="g">◆</span><span>TP +100% · SL −30% armed</span>`,`<span class="g">◆</span><span>Dev-sell exit on</span>`,`<span class="g">◆</span><span>Position <b class="g">+${ri(8,140)}%</b> live</span>`]; b.innerHTML='<div class="lm-fill">'+rows.map(r=>`<div>${r}</div>`).join('')+'</div>' };
+  f(); every(f,2200);
+  c.innerHTML='<div class="lm-tot"><span>LAST 14 DAYS</span><b id="lmt">+$0</b></div><div class="lm-bars" id="lmb"></div>'; const bx=$('#lmb'); const B=Array.from({length:14},()=>Math.random()<.7?rnd(.2,1):-rnd(.1,.5));
+  const r=()=>{ bx.innerHTML=B.map(v=>`<i style="height:${Math.abs(v)*100}%;background:${v>0?'linear-gradient(#2FE39A,#0e6b48)':'linear-gradient(#FF5F6D,#6b1d24)'}"></i>`).join(''); $('#lmt').textContent='+$'+Math.round(B.reduce((s,v)=>s+v*1400,0)+4000).toLocaleString('en-US') };
+  r(); every(()=>{ B.shift(); B.push(Math.random()<.7?rnd(.2,1):-rnd(.1,.5)); r() },2400) })();
+
+/* final: calls marquee */
+(()=>{ const rows=$$('.mrow'); if(!rows.length) return; rows.forEach(row=>{ let h=''; for(let i=0;i<12;i++){ const t=pick(TOK); h+=`<div class="mcard"><span class="av" style="background:${tokColor(t)}">${t.slice(0,2)}</span><b>${t}</b><span class="p">+${ri(40,980)}%</span><span>called by ${pick(WAL)}</span></div>` } row.innerHTML=h+h }) })();
+
+
 })();
 </script>
 </body>

@@ -106,7 +106,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       const curve = e.launchpad === 'pumpfun' || e.launchpad === 'fourmeme' || e.launchpad === 'flap' || e.launchpad === 'pons';
       await this.intel.onLaunch(e.chain, e.address, e.creator ?? null, e.at, curve);
     }
-    if (e.trade) await this.intel.onTrade(e.chain, e.address, e.trade, e.at).catch((err) => this.log.debug(`intel: ${(err as Error).message}`));
+    if (e.trade && e.type !== 'created') await this.intel.onTrade(e.chain, e.address, e.trade, e.at).catch((err) => this.log.debug(`intel: ${(err as Error).message}`));
     // throttle progress writes: at most once per 3s per token
     if (e.type === 'progress' && !(await this.redis.allow(`tp:${e.chain}:${e.address}`, 1, 3)) && stage === existing?.stage) return;
     const ath = Math.max(existing?.athMarketCapUsd ?? 0, data.marketCapUsd ?? 0) || null;
@@ -116,6 +116,8 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       create: { chain: e.chain as Chain, address: e.address, ...data, stage, createdAt: e.at, athMarketCapUsd: ath },
     });
     if (e.type === 'created' && e.metadataUri) void this.applyMetadata(e.chain as Chain, e.address, e.metadataUri);
+    // the dev's launch buy, now that the coin row exists
+    if (e.type === 'created' && e.trade) await this.intel.onTrade(e.chain, e.address, e.trade, e.at).catch(() => undefined);
     const room = `trenches:${e.chain}`;
     if (e.type === 'created') this.rt.toRoom(room, 'trenches:token', await this.toTrench(token, {}, []));
     else

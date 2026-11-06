@@ -46,9 +46,7 @@ export class IntelService implements OnModuleInit {
 
   onModuleInit() {
     this.onDevSell(async (e) => {
-      await this.prisma.db.token
-        .update({ where: { chain_address: { chain: e.chain as Chain, address: e.address } }, data: { devSoldAt: e.at } })
-        .catch(() => undefined);
+      await this.prisma.db.token.updateMany({ where: { chain: e.chain as Chain, address: e.address }, data: { devSoldAt: e.at } }).catch(() => undefined);
       this.rt.toRoom(roomIds.coin(e.chain, e.address), 'coin:devsell', { chain: e.chain, address: e.address, soldAll: e.soldAll, at: e.at.toISOString() });
     });
   }
@@ -103,9 +101,8 @@ export class IntelService implements OnModuleInit {
     const l = await this.ledger(chain, address);
     if (!l) return null;
     const intel = computeIntel(l.ledger, l.creator, l.supply);
-    await this.prisma.db.token
-      .update({ where: { chain_address: { chain: chain as Chain, address } }, data: { intel: intel as object, holders: intel.holders } })
-      .catch(() => undefined);
+    // updateMany: the coin row may not exist yet for the launch tx itself — no error, no log noise
+    await this.prisma.db.token.updateMany({ where: { chain: chain as Chain, address }, data: { intel: intel as object, holders: intel.holders } }).catch(() => undefined);
     this.rt.toRoom(`trenches:${chain}`, 'trenches:update', { chain, address, intel, holders: intel.holders });
     return intel;
   }

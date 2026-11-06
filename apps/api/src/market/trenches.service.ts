@@ -215,6 +215,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
           hasWebsite: t.hasWebsite || !!p?.socials?.website,
           pairAddress: t.pairAddress ?? p?.pairAddress ?? null,
           imageUrl: t.imageUrl ?? p?.imageUrl ?? null,
+          athMarketCapUsd: Math.max(t.athMarketCapUsd ?? 0, p?.marketCap ?? p?.fdv ?? 0) || t.athMarketCapUsd,
           // pump.fun tokens that appear on a non-pump DEX have migrated
           migratedAt: t.migratedAt ?? (t.launchpad === 'pumpfun' && p && p.dex !== 'pumpfun' ? new Date() : null),
         };

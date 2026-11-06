@@ -40,7 +40,13 @@ export class HuntService {
       viewerId ? this.friendsBought(viewerId, pool) : Promise.resolve([]),
     ]);
     const friendSet = new Set(friends.map((x) => x.tokenAddress));
-    const tokens = pool.filter((t) => (t.marketCapUsd ?? 0) < 3e12 && matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), f));
+    // no liquidity or impossible moves = wash-traded junk; keep it out of rankings
+    const real = (t: Token) =>
+      (t.marketCapUsd ?? 0) < 3e12 &&
+      (q.sort === 'new' || (t.liquidityUsd ?? 0) >= 3_000 || (!!t.launchpad && !t.migratedAt)) &&
+      Math.abs(t.priceChange24h ?? 0) < 20_000 &&
+      Math.abs(t.priceChange1h ?? 0) < 5_000;
+    const tokens = pool.filter((t) => real(t) && matchesFilter(factsFor(t, counts[roomIds.coin(t.chain, t.address)] ?? 0, friendSet.has(t.address)), f));
 
     const scored = tokens.map((t) => {
       const key = roomIds.coin(t.chain, t.address);

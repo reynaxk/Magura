@@ -163,7 +163,7 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
                 <PriceChart chain={chain} pool={pool} tf={tf} height={440} markers={markers} lines={lines} />
               )}
             </section>
-            <CoinActivity chain={chain} address={address} creator={tok?.creator ?? null} />
+            <CoinActivity chain={chain} address={address} creator={tok?.creator ?? null} symbol={symbol} priceUsd={price} />
           </div>
 
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-3 lg:max-w-[360px] lg:pl-0">

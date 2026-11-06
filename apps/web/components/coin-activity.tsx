@@ -8,6 +8,7 @@ import { useSession } from '@/lib/session';
 import { toast } from './toaster';
 import { Empty, Icon } from './ui';
 import { DevReportCard, WalletTable } from './wallet-tables';
+import { PositionTab } from './position-tab';
 
 type Tag = 'you' | 'magura' | 'following' | 'tracked' | 'dev' | 'early' | 'pool' | 'locked';
 interface CoinTrade {
@@ -81,16 +82,17 @@ function TrackButton({ address }: { address: string }) {
 }
 
 /** Live trades and labelled holders for one coin. */
-type ActivityTab = 'trades' | 'holders' | 'top' | 'early' | 'dev';
+type ActivityTab = 'trades' | 'position' | 'holders' | 'top' | 'early' | 'dev';
 const TABS: { id: ActivityTab; label: string }[] = [
   { id: 'trades', label: 'Trades' },
+  { id: 'position', label: 'Position' },
   { id: 'holders', label: 'Holders' },
   { id: 'top', label: 'Top traders' },
   { id: 'early', label: 'Early buyers' },
   { id: 'dev', label: 'Dev' },
 ];
 
-export function CoinActivity({ chain, address, creator }: { chain: ChainId; address: string; creator?: string | null }) {
+export function CoinActivity({ chain, address, creator, symbol = '', priceUsd = null }: { chain: ChainId; address: string; creator?: string | null; symbol?: string; priceUsd?: number | null }) {
   const [tab, setTab] = useState<ActivityTab>('trades');
   const [filter, setFilter] = useState<FilterId>('all');
   const [minUsd, setMinUsd] = useState(0);
@@ -235,6 +237,7 @@ export function CoinActivity({ chain, address, creator }: { chain: ChainId; addr
       {tab === 'holders' && <WalletTable chain={chain} address={address} sort="holding" fallback={<HoldersFallback />} />}
       {tab === 'top' && <WalletTable chain={chain} address={address} sort="pnl" fallback={<HoldersFallback />} />}
       {tab === 'early' && <WalletTable chain={chain} address={address} sort="early" fallback={<Empty icon={Icon.globe} title="Early buyers need launch data">We track entries for coins from the moment they launch on Pump.fun and other launchpads we watch.</Empty>} />}
+      {tab === 'position' && <PositionTab chain={chain} address={address} symbol={symbol} priceUsd={priceUsd} />}
       {tab === 'dev' && <DevReportCard chain={chain} creator={creator ?? null} />}
     </section>
   );

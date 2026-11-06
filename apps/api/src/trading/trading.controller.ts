@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
 import { CHAINS } from '@magura/shared';
-import { tokenBalance } from '@magura/chains';
+import { tokenBalance, tokenDecimals } from '@magura/chains';
 import type { User } from '@magura/db';
 import { CurrentUser, Public } from '../auth/auth.guard';
-import { PrismaService } from '../common/infra.module';
+import { PrismaService, RedisService } from '../common/infra.module';
 import { parse, zChain, zMoney } from '../common/zod';
 import { computePnl } from './pnl';
 import { CopyService } from './copy.service';
@@ -16,6 +16,7 @@ export class TradingController {
     private readonly trading: TradingService,
     private readonly copy: CopyService,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   // ───── swaps (spot only) ─────
@@ -109,7 +110,24 @@ export class TradingController {
         }
       }
     }
-    return { open: qty > 0n, avgPriceUsd: qty > 0n && cost > 0 ? weighted / cost : null, costUsd: qty > 0n ? cost : 0, soldUsd: sold };
+    const realized = computePnl(trades.map((t) => ({ tokenKey: token, side: t.side as 'buy' | 'sell', amountIn: t.amountIn, amountOut: t.amountOut, amountUsd: Number(t.amountUsd ?? 0) }))).realizedUsd;
+    const decimals = qty > 0n ? await this.redis.cached(`dec:${chain}:${token}`, 86_400, () => tokenDecimals(chain, token).catch(() => null)) : null;
+    return {
+      open: qty > 0n,
+      avgPriceUsd: qty > 0n && cost > 0 ? weighted / cost : null,
+      costUsd: qty > 0n ? cost : 0,
+      soldUsd: sold,
+      realizedUsd: realized,
+      /** UI units still held (by our trade records) */
+      holding: qty > 0n && decimals != null ? Number(qty) / 10 ** decimals : null,
+      boughtUsd: trades.filter((t) => t.side === 'buy').reduce((a, t) => a + Number(t.amountUsd ?? 0), 0),
+      buys: trades.filter((t) => t.side === 'buy').length,
+      sells: trades.filter((t) => t.side === 'sell').length,
+      trades: trades
+        .slice(-30)
+        .reverse()
+        .map((t) => ({ id: t.id, side: t.side, amountUsd: Number(t.amountUsd ?? 0), priceUsd: t.priceUsd, txHash: t.txHash, at: t.createdAt.toISOString() })),
+    };
   }
 
   @Get('me/portfolio')

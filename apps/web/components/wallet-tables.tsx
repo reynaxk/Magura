@@ -15,7 +15,7 @@ interface WalletsResponse {
 }
 
 const short = (a: string) => (a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a);
-const FILTER_TAGS: (WalletTag | 'all')[] = ['all', 'dev', 'sniper', 'bundler', 'insider', 'fresh', 'whale', 'early', 'magura'];
+const FILTER_TAGS: (WalletTag | 'all')[] = ['all', 'smart', 'dev', 'sniper', 'bundler', 'insider', 'fresh', 'whale', 'early', 'magura'];
 
 export function TagPill({ tag }: { tag: WalletTag }) {
   const m = tagMeta(tag);
@@ -60,7 +60,6 @@ export function WalletTable({ chain, address, sort, fallback }: { chain: ChainId
     refetchInterval: 10_000,
   });
   const sym = CHAINS[chain].nativeSymbol;
-  const explorer = CHAINS[chain].explorer;
   if (q.data && q.data.rows === null) return <>{fallback}</>;
   const rows = q.data?.rows ?? [];
   const usd = q.data?.nativeUsd ?? null;
@@ -108,9 +107,9 @@ export function WalletTable({ chain, address, sort, fallback }: { chain: ChainId
                         <Avatar name={r.handle} size={18} shape="circle" />@{r.handle}
                       </Link>
                     ) : (
-                      <a href={`${explorer}/account/${r.wallet}`} target="_blank" rel="noreferrer" className="num text-text-2 hover:text-text">
+                      <Link href={`/w/${chain}/${r.wallet}`} className="num text-text-2 hover:text-lime">
                         {short(r.wallet)}
-                      </a>
+                      </Link>
                     )}
                     {r.tags.filter((t) => t !== 'magura').map((t) => (
                       <TagPill key={t} tag={t} />

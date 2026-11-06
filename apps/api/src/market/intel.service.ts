@@ -33,6 +33,18 @@ interface IngestTrade extends LaunchTrade {
   slot?: number | null;
 }
 
+/** Every ledger fill, with the realized PnL of sells (native). */
+export interface WalletFill {
+  chain: ChainId;
+  mint: string;
+  wallet: string;
+  side: 'buy' | 'sell';
+  native: number;
+  tokens: number;
+  realized: number;
+  at: Date;
+}
+export type FillHandler = (f: WalletFill) => void;
 export type MigrateHandler = (e: { chain: ChainId; address: string; at: Date }) => void | Promise<void>;
 export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: string; soldAll: boolean; at: Date }) => void | Promise<void>;
 
@@ -45,6 +57,11 @@ export class IntelService implements OnModuleInit {
   private readonly log = new Logger('intel');
   private devSellHandlers: DevSellHandler[] = [];
   private migrateHandlers: MigrateHandler[] = [];
+  private fillHandlers: FillHandler[] = [];
+
+  onFill(fn: FillHandler) {
+    this.fillHandlers.push(fn);
+  }
   /** coins with new trades since the last fresh-wallet pass */
   private active = new Set<string>();
   /** pump.fun mints we keep ledgers for / know we don't (bounded) */
@@ -183,6 +200,14 @@ export class IntelService implements OnModuleInit {
       if (t.slot != null && launchSlot != null) ms = t.slot === launchSlot ? 0 : Math.max(ms, BUNDLE_WINDOW_MS + 1);
       const next = applyTrade(prev, t, ms, rank);
       await this.redis.client.hset(lk, t.wallet, JSON.stringify(next));
+      if (this.fillHandlers.length) {
+        // realized PnL of a sell = proceeds − average cost of the tokens sold (only what we saw them buy)
+        const avgCost = prev && prev.bt > 0 ? prev.ni / prev.bt : 0;
+        const soldKnown = prev ? Math.min(t.tokenAmount, prev.bal) : 0;
+        const realized = t.side === 'sell' && prev && prev.bt > 0 ? (t.nativeAmount * soldKnown) / Math.max(t.tokenAmount, 1e-9) - avgCost * soldKnown : 0;
+        const fill: WalletFill = { chain, mint: address, wallet: t.wallet, side: t.side, native: t.nativeAmount, tokens: t.tokenAmount, realized, at: t.at };
+        for (const h of this.fillHandlers) h(fill);
+      }
       changed = true;
       if (isDev && t.side === 'sell') devSold = { wallet: t.wallet, soldAll: next.bal <= next.bt * 0.001, at: t.at };
     }

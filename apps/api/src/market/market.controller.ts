@@ -11,6 +11,7 @@ import { HuntService, type HuntSort } from './hunt.service';
 import { TrenchesService } from './trenches.service';
 import { CoinActivityService } from './coin-activity.service';
 import { IntelService } from './intel.service';
+import { SmartService, type Window } from './smart.service';
 
 const addr = (chain: ChainId, a: string) => (chain === 'solana' ? a : a.toLowerCase());
 
@@ -23,6 +24,7 @@ export class MarketController {
     private readonly hunt: HuntService,
     private readonly activity: CoinActivityService,
     private readonly intel: IntelService,
+    private readonly smart: SmartService,
   ) {}
 
   /** Hunt: discover coins. `f` = JSON CoinFilter from the Filters panel; `count=1` returns only the match count. */
@@ -139,8 +141,46 @@ export class MarketController {
     // curve coins: 1B supply → price from market cap when the pair price isn't known yet
     const priceUsd = row?.priceUsd ?? (row?.marketCapUsd ? row.marketCapUsd / 1e9 : null);
     const priceNative = priceUsd && nativeUsd ? priceUsd / nativeUsd : null;
-    const rows = await this.intel.holders(chain, address, sort, tag, priceNative, 100);
+    const all = await this.intel.holders(chain, address, sort, tag === 'smart' ? null : tag, priceNative, tag === 'smart' ? 500 : 100);
+    // smart-money wallets come from the wallet leaderboard
+    const rows =
+      all?.map((r) => (this.smart.isSmart(r.wallet) && !r.tags.includes('smart') ? { ...r, tags: ['smart' as WalletTag, ...r.tags] } : r)).filter((r) => tag !== 'smart' || r.tags.includes('smart')).slice(0, 100) ?? null;
     return { rows, nativeUsd: nativeUsd ?? null, intel: (row?.intel as TokenIntel | null) ?? null, creator: row?.creator ?? null };
+  }
+
+  /** Wallet leaderboard (CopyTrade → Rank). */
+  @Public()
+  @Get('smart/rank')
+  smartRank(@Query('window') w = '7d', @Query('sort') sort = 'pnl') {
+    const window = (['1d', '7d', '30d'] as const).includes(w as Window) ? (w as Window) : '7d';
+    const by = (['pnl', 'winrate', 'volume'] as const).includes(sort as 'pnl') ? (sort as 'pnl' | 'winrate' | 'volume') : 'pnl';
+    return this.smart.rank(window, by, 100);
+  }
+
+  /** Coins smart wallets are buying (Monitor → Smart). */
+  @Public()
+  @Get('smart/flow')
+  smartFlow(@Query('m') m = '60') {
+    const minutes = [5, 15, 60, 240].includes(Number(m)) ? Number(m) : 60;
+    return this.redis.cached(`sflow:v1:${minutes}`, 15, () => this.smart.flow(minutes));
+  }
+
+  /** Radar: wallets that traded all of these coins. */
+  @Public()
+  @Get('smart/radar')
+  radar(@Query('chain') c = 'solana', @Query('coins') coins = '') {
+    const chain = parse(zChain, c);
+    const mints = [...new Set(coins.split(',').map((x) => x.trim()).filter(Boolean))].slice(0, 6).map((x) => addr(chain, x));
+    if (mints.length < 2) return { missing: [], wallets: [] };
+    return this.smart.radar(chain, mints);
+  }
+
+  /** Wallet page: PnL by window, holdings, recent trades. */
+  @Public()
+  @Get('wallet/:chain/:address')
+  walletPage(@Param('chain') c: string, @Param('address') a: string) {
+    const chain = parse(zChain, c);
+    return this.smart.wallet(chain, addr(chain, a));
   }
 
   /** Dev report card: launches, migrations, quick rugs, best coin. */

@@ -13,10 +13,11 @@ import { Wordmark } from './logo';
 import { Avatar, Icon, Svg } from './ui';
 
 const NAV = [
-  { href: '/', label: 'Hunt' },
-  { href: '/feed', label: 'Feed' },
   { href: '/trenches', label: 'Trenches' },
+  { href: '/', label: 'Trending' },
+  { href: '/smart', label: 'Smart' },
   { href: '/copy', label: 'Copy' },
+  { href: '/feed', label: 'Feed' },
   { href: '/groups', label: 'Groups' },
   { href: '/messages', label: 'Messages' },
   { href: '/live', label: 'Live' },
@@ -149,7 +150,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
 }
 
 const TABS = [
-  { href: '/', label: 'Hunt', d: 'M3 17l5-5 4 4 9-9M15 7h6v6', match: (p: string) => p === '/' || p.startsWith('/t/') },
+  { href: '/', label: 'Trending', d: 'M3 17l5-5 4 4 9-9M15 7h6v6', match: (p: string) => p === '/' || p.startsWith('/t/') },
   { href: '/trenches', label: 'Trenches', d: 'M13 2L4 14h7l-1 8 9-12h-7z', match: (p: string) => p.startsWith('/trenches') },
   { href: '/copy', label: 'Copy', d: 'M8 8h11v11H8zM5 16V5h11', match: (p: string) => p.startsWith('/copy') || p.startsWith('/u/') },
   {

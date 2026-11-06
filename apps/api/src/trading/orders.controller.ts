@@ -10,16 +10,40 @@ const zOrder = z
     chain: zChain,
     tokenAddress: z.string().min(20).max(80),
     tokenSymbol: z.string().min(1).max(20),
-    kind: z.enum(['tp', 'sl', 'trail', 'limit_buy']),
+    kind: z.enum(['tp', 'sl', 'trail', 'trail_tp', 'limit_buy', 'dca', 'dev_sell', 'dev_sell_buy', 'migrate_buy', 'migrate_sell']),
     triggerPct: z.number().min(1).max(10_000).optional(),
     triggerMcUsd: z.number().positive().max(1e13).optional(),
     sellPct: z.number().int().min(1).max(100).optional(),
     buyAmount: z.string().regex(/^\d+(\.\d+)?$/).optional(),
     slippageBps: z.number().int().min(10).max(5000).optional(),
+    armPct: z.number().min(1).max(10_000).optional(),
+    intervalSec: z.number().int().min(30).max(7 * 86_400).optional(),
+    slices: z.number().int().min(2).max(50).optional(),
+    minMcUsd: z.number().positive().max(1e13).optional(),
   })
-  .refine((o) => (o.kind === 'limit_buy' ? !!o.triggerMcUsd && !!o.buyAmount : !!o.triggerPct && !!o.sellPct), { message: 'missing_fields' })
+  .refine(
+    (o) => {
+      switch (o.kind) {
+        case 'limit_buy':
+          return !!o.triggerMcUsd && !!o.buyAmount;
+        case 'dca':
+          return !!o.buyAmount && !!o.intervalSec && !!o.slices;
+        case 'dev_sell_buy':
+        case 'migrate_buy':
+          return !!o.buyAmount;
+        case 'dev_sell':
+        case 'migrate_sell':
+          return !!o.sellPct;
+        case 'trail_tp':
+          return !!o.armPct && !!o.triggerPct && !!o.sellPct;
+        default:
+          return !!o.triggerPct && !!o.sellPct;
+      }
+    },
+    { message: 'missing_fields' },
+  )
   .refine((o) => o.kind !== 'sl' || (o.triggerPct ?? 0) <= 95, { message: 'stop_loss_max_95' })
-  .refine((o) => o.kind !== 'trail' || (o.triggerPct ?? 0) <= 90, { message: 'trail_max_90' });
+  .refine((o) => !['trail', 'trail_tp'].includes(o.kind) || (o.triggerPct ?? 0) <= 90, { message: 'trail_max_90' });
 
 @Controller('orders')
 export class OrdersController {

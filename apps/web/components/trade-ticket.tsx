@@ -7,14 +7,14 @@ import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { toast } from './toaster';
 import { Icon, Svg } from './ui';
-import { ActiveOrders, LimitBuyForm, TpSlForm } from './orders';
+import { ActiveOrders, AutoTriggersForm, DcaForm, LimitBuyForm, TpSlForm } from './orders';
 import { ShareCardButton } from './share-card';
 
 type Quote = SwapQuote & { quoteId: string; amountUsd: number | null };
 
 /** Spot buy/sell ticket. Quote → build → wallet signs → API records & confirms. */
 export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }: { chain: ChainId; token: string; symbol: string; decimals?: number; mcUsd?: number | null }) {
-  const [mode, setMode] = useState<'market' | 'limit' | 'tpsl'>('market');
+  const [mode, setMode] = useState<'market' | 'limit' | 'tpsl' | 'dca' | 'auto'>('market');
   const { me, login, addressFor, sendSwap } = useSession();
   const qc = useQueryClient();
   const native = CHAINS[chain].nativeSymbol;
@@ -97,12 +97,14 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
 
   return (
     <section aria-label="Trade ticket" className="panel flex flex-col gap-3.5 p-[18px]">
-      <div role="tablist" aria-label="Order type" className="flex gap-4 border-b border-line text-[13px] font-semibold">
+      <div role="tablist" aria-label="Order type" className="scroll-thin flex gap-4 overflow-x-auto border-b border-line text-[13px] font-semibold">
         {(
           [
             ['market', 'Market'],
             ['limit', 'Limit'],
             ['tpsl', 'TP / SL'],
+            ['dca', 'DCA'],
+            ['auto', 'Auto'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -110,7 +112,7 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
             role="tab"
             aria-selected={mode === id}
             onClick={() => setMode(id)}
-            className={`-mb-px border-b-2 pb-2.5 ${mode === id ? 'border-lime text-text' : 'border-transparent text-muted hover:text-text'}`}
+            className={`-mb-px shrink-0 border-b-2 pb-2.5 ${mode === id ? 'border-lime text-text' : 'border-transparent text-muted hover:text-text'}`}
           >
             {label}
           </button>
@@ -118,6 +120,8 @@ export function TradeTicket({ chain, token, symbol, decimals = 6, mcUsd = null }
       </div>
       {mode === 'limit' && <LimitBuyForm chain={chain} token={token} symbol={symbol} mcUsd={mcUsd} />}
       {mode === 'tpsl' && <TpSlForm chain={chain} token={token} symbol={symbol} />}
+      {mode === 'dca' && <DcaForm chain={chain} token={token} symbol={symbol} mcUsd={mcUsd} />}
+      {mode === 'auto' && <AutoTriggersForm chain={chain} token={token} symbol={symbol} />}
       {mode === 'market' && (
         <>
           <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-raised p-1">

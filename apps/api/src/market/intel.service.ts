@@ -25,6 +25,7 @@ const TTL = 3 * 24 * 3600;
 const ledgerKey = (c: string, a: string) => `il:${c}:${a}`;
 const metaKey = (c: string, a: string) => `im:${c}:${a}`;
 
+export type MigrateHandler = (e: { chain: ChainId; address: string; at: Date }) => void | Promise<void>;
 export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: string; soldAll: boolean; at: Date }) => void | Promise<void>;
 
 /**
@@ -35,6 +36,7 @@ export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: stri
 export class IntelService implements OnModuleInit {
   private readonly log = new Logger('intel');
   private devSellHandlers: DevSellHandler[] = [];
+  private migrateHandlers: MigrateHandler[] = [];
   /** coins with new trades since the last fresh-wallet pass */
   private active = new Set<string>();
 
@@ -54,6 +56,15 @@ export class IntelService implements OnModuleInit {
   /** Other modules (orders, alerts) subscribe to dev sells. */
   onDevSell(fn: DevSellHandler) {
     this.devSellHandlers.push(fn);
+  }
+
+  /** Other modules subscribe to a coin leaving its bonding curve. */
+  onMigrate(fn: MigrateHandler) {
+    this.migrateHandlers.push(fn);
+  }
+
+  migrated(chain: ChainId, address: string, at = new Date()) {
+    for (const h of this.migrateHandlers) void Promise.resolve(h({ chain, address, at })).catch(() => undefined);
   }
 
   /** A coin launched: remember when and who made it. */

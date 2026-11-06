@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { dexscreener, tokenBalance } from '@magura/chains';
 import type { OrderRule, User } from '@magura/db';
@@ -8,9 +8,24 @@ import { NotificationsService } from '../notifications/notifications.module';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SignerService } from './signer.service';
 import { TradingService } from './trading.service';
-import { shouldFire } from './orders.rules';
+import { BUY_KINDS, EVENT_KINDS, shouldArm, shouldFire } from './orders.rules';
+import { IntelService } from '../market/intel.service';
 
-export type OrderKind = 'tp' | 'sl' | 'trail' | 'limit_buy';
+export type OrderKind = 'tp' | 'sl' | 'trail' | 'trail_tp' | 'limit_buy' | 'dca' | 'dev_sell' | 'dev_sell_buy' | 'migrate_buy' | 'migrate_sell';
+
+export const ORDER_NAME: Record<OrderKind, string> = {
+  tp: 'Take profit',
+  sl: 'Stop loss',
+  trail: 'Trailing stop',
+  trail_tp: 'Trailing take profit',
+  limit_buy: 'Limit buy',
+  dca: 'DCA',
+  dev_sell: 'Sell on dev sell',
+  dev_sell_buy: 'Buy on dev sell',
+  migrate_buy: 'Buy on migration',
+  migrate_sell: 'Sell on migration',
+};
+const isBuy = (k: string) => (BUY_KINDS as readonly string[]).includes(k);
 
 export interface NewOrder {
   chain: ChainId;
@@ -22,6 +37,10 @@ export interface NewOrder {
   sellPct?: number;
   buyAmount?: string;
   slippageBps?: number;
+  armPct?: number;
+  intervalSec?: number;
+  slices?: number;
+  minMcUsd?: number;
 }
 
 const MAX_ACTIVE = 50;
@@ -32,7 +51,7 @@ const MAX_ACTIVE = 50;
  * or — without one — asks the user to confirm in the app.
  */
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
   private readonly log = new Logger('orders');
   private running = false;
 
@@ -43,7 +62,19 @@ export class OrdersService {
     private readonly signer: SignerService,
     private readonly notify: NotificationsService,
     private readonly rt: RealtimeService,
+    private readonly intel: IntelService,
   ) {}
+
+  onModuleInit() {
+    // event-driven automations
+    this.intel.onDevSell((e) => this.fireEvent(e.chain, e.address, ['dev_sell', 'dev_sell_buy']));
+    this.intel.onMigrate((e) => this.fireEvent(e.chain, e.address, ['migrate_buy', 'migrate_sell']));
+  }
+
+  private async fireEvent(chain: ChainId, address: string, kinds: string[]) {
+    const rules = await this.prisma.db.orderRule.findMany({ where: { status: 'active', chain, tokenAddress: address, kind: { in: kinds } } });
+    for (const r of rules) await this.fire(r);
+  }
 
   private async market(chain: ChainId, token: string) {
     const [pair, row] = await Promise.all([
@@ -61,7 +92,8 @@ export class OrdersService {
     const out: OrderRule[] = [];
     for (const o of input) {
       const { price, mcUsd } = await this.market(o.chain, o.tokenAddress);
-      if (o.kind !== 'limit_buy' && price == null) throw new BadRequestException({ error: 'no_price', message: 'No live price for this coin yet' });
+      const needsPrice = !isBuy(o.kind) && !(EVENT_KINDS as readonly string[]).includes(o.kind);
+      if (needsPrice && price == null) throw new BadRequestException({ error: 'no_price', message: 'No live price for this coin yet' });
       if (o.kind === 'limit_buy' && mcUsd != null && o.triggerMcUsd! >= mcUsd)
         throw new BadRequestException({ error: 'limit_above_market', message: 'Limit market cap must be below the current market cap' });
       out.push(
@@ -79,6 +111,11 @@ export class OrdersService {
             slippageBps: o.slippageBps ?? 1500,
             entryPrice: price,
             peakPrice: price,
+            armPct: o.armPct ?? null,
+            intervalSec: o.intervalSec ?? null,
+            slicesTotal: o.slices ?? null,
+            nextAt: o.kind === 'dca' ? new Date() : null,
+            minMcUsd: o.minMcUsd ?? null,
           },
         }),
       );
@@ -99,13 +136,21 @@ export class OrdersService {
     return { ok: true };
   }
 
-  /** The app executed an order the user had to confirm. */
+  /** The app executed an order the user had to confirm. DCA keeps going until every slice is bought. */
   async markDone(user: User, id: string, txHash: string | null, skipped = false) {
-    await this.prisma.db.orderRule.updateMany({
-      where: { id, userId: user.id, status: 'awaiting_confirm' },
-      data: { status: skipped ? 'cancelled' : 'done', txHash },
-    });
+    const r = await this.prisma.db.orderRule.findFirst({ where: { id, userId: user.id, status: 'awaiting_confirm' } });
+    if (!r) return { ok: true };
+    const next = r.kind === 'dca' ? this.afterFill(r) : { status: skipped ? 'cancelled' : 'done' };
+    await this.prisma.db.orderRule.update({ where: { id }, data: { ...next, txHash } });
     return { ok: true };
+  }
+
+  /** After a fill: DCA schedules its next slice; everything else is done. */
+  private afterFill(r: OrderRule) {
+    if (r.kind !== 'dca') return { status: 'done' };
+    const done = r.slicesDone + 1;
+    const finished = done >= (r.slicesTotal ?? 1);
+    return { slicesDone: done, status: finished ? 'done' : 'active', nextAt: finished ? null : new Date(Date.now() + (r.intervalSec ?? 60) * 1000) };
   }
 
   @Interval(10_000)
@@ -113,7 +158,7 @@ export class OrdersService {
     if (this.running) return;
     this.running = true;
     try {
-      const rules = await this.prisma.db.orderRule.findMany({ where: { status: 'active' }, take: 2000 });
+      const rules = await this.prisma.db.orderRule.findMany({ where: { status: 'active', kind: { notIn: [...EVENT_KINDS] } }, take: 2000 });
       const byToken = new Map<string, OrderRule[]>();
       for (const r of rules) {
         const k = `${r.chain}:${r.tokenAddress}`;
@@ -124,7 +169,12 @@ export class OrdersService {
         const { price, mcUsd } = await this.market(chain, token);
         if (price == null) continue;
         for (const r of group) {
-          if (r.kind === 'trail' && price > (r.peakPrice ?? 0)) {
+          if (shouldArm(r, price)) {
+            await this.prisma.db.orderRule.update({ where: { id: r.id }, data: { armed: true, peakPrice: price } });
+            r.armed = true;
+            r.peakPrice = price;
+          }
+          if ((r.kind === 'trail' || (r.kind === 'trail_tp' && r.armed)) && price > (r.peakPrice ?? 0)) {
             await this.prisma.db.orderRule.update({ where: { id: r.id }, data: { peakPrice: price } });
             r.peakPrice = price;
           }
@@ -143,8 +193,8 @@ export class OrdersService {
     const claimed = await this.prisma.db.orderRule.updateMany({ where: { id: r.id, status: 'active' }, data: { status: 'executing', triggeredAt: new Date() } });
     if (!claimed.count) return;
     const chain = r.chain as ChainId;
-    const side = r.kind === 'limit_buy' ? 'buy' : 'sell';
-    const name = { tp: 'Take profit', sl: 'Stop loss', trail: 'Trailing stop', limit_buy: 'Limit buy' }[r.kind] ?? 'Order';
+    const side = isBuy(r.kind) ? 'buy' : 'sell';
+    const name = ORDER_NAME[r.kind as OrderKind] ?? 'Order';
     const wallet = await this.prisma.db.wallet.findFirst({
       where: { userId: r.userId, chainKind: CHAINS[chain].kind },
       orderBy: [{ delegated: 'desc' }, { isPrimary: 'desc' }],
@@ -176,7 +226,7 @@ export class OrdersService {
       const hash = await this.signer.send(chain, wallet.privyWalletId, tx);
       const user = await this.prisma.db.user.findUniqueOrThrow({ where: { id: r.userId } });
       await this.trading.record(user, { quoteId: q.quoteId, chain, side, tokenAddress: r.tokenAddress, tokenSymbol: r.tokenSymbol, txHash: hash, source: 'order', shareToRoom: false });
-      await this.prisma.db.orderRule.update({ where: { id: r.id }, data: { status: 'done', txHash: hash } });
+      await this.prisma.db.orderRule.update({ where: { id: r.id }, data: { ...this.afterFill(r), txHash: hash } });
       this.rt.toUser(r.userId, 'order:fired', { orderId: r.id, kind: r.kind, side, symbol: r.tokenSymbol, chain, token: r.tokenAddress, needsConfirm: false, txHash: hash });
       await this.notify.notify(r.userId, 'order', `${name} filled on ${r.tokenSymbol}`, side === 'sell' ? `Sold ${r.sellPct ?? 100}% of your position` : `Bought for ${r.buyAmount} ${CHAINS[chain].nativeSymbol}`, `/t/${chain}/${r.tokenAddress}`);
     } catch (e) {

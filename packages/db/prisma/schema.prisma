@@ -298,7 +298,8 @@ model OrderRule {
   chain        Chain
   tokenAddress String
   tokenSymbol  String
-  kind         String // tp | sl | trail | limit_buy
+  /// tp | sl | trail | trail_tp | limit_buy | dca | dev_sell | dev_sell_buy | migrate_buy | migrate_sell
+  kind         String
   /// tp: +% above entry · sl: −% below entry (stored negative) · trail: % drop from the peak
   triggerPct   Float?
   /// limit_buy: buy when market cap is at or below this
@@ -309,6 +310,15 @@ model OrderRule {
   buyAmount    String?
   entryPrice   Float?
   peakPrice    Float?
+  /// trail_tp: arm once price is up this % from entry, then trail by triggerPct
+  armPct       Float?
+  armed        Boolean   @default(false)
+  /// dca: buy buyAmount every intervalSec, slicesTotal times, only while MC is within [minMcUsd, triggerMcUsd]
+  intervalSec  Int?
+  slicesTotal  Int?
+  slicesDone   Int       @default(0)
+  nextAt       DateTime?
+  minMcUsd     Float?
   slippageBps  Int       @default(1500)
   status       String    @default("active") // active | executing | awaiting_confirm | done | failed | cancelled
   error        String?

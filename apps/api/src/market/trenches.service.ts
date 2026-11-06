@@ -116,6 +116,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
       create: { chain: e.chain as Chain, address: e.address, ...data, stage, createdAt: e.at, athMarketCapUsd: ath },
     });
     if (e.type === 'created' && e.metadataUri) void this.applyMetadata(e.chain as Chain, e.address, e.metadataUri);
+    if (e.type === 'migrated' && !existing?.migratedAt) this.intel.migrated(e.chain, e.address, e.at);
     // the dev's launch buy, now that the coin row exists
     if (e.type === 'created' && e.trade) await this.intel.onTrade(e.chain, e.address, e.trade, e.at).catch(() => undefined);
     const room = `trenches:${e.chain}`;
@@ -216,6 +217,7 @@ export class TrenchesService implements OnModuleInit, OnModuleDestroy {
         };
         const stage = stageFor({ ...t, ...next });
         await this.prisma.db.token.update({ where: { chain_address: { chain, address: t.address } }, data: { ...next, stage } });
+        if (!t.migratedAt && next.migratedAt) this.intel.migrated(chain, t.address);
         if (stage !== t.stage || next.marketCapUsd !== t.marketCapUsd) {
           this.rt.toRoom(`trenches:${chain}`, 'trenches:update', {
             chain,

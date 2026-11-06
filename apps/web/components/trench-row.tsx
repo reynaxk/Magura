@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { fmtAge, fmtUsd, tagMeta, type TrenchToken, type WalletTag } from '@magura/shared';
 import type { TrenchPrefs } from '@/lib/trench-prefs';
 import { Avatar, Icon, Svg } from './ui';
+import { Star } from './star';
 
 /** Pro layout: one coin in two tight lines — everything a sniper needs at a glance. */
 function Mini({ tag, v, warn }: { tag: WalletTag | 'top10'; v: number | null | undefined; warn: number }) {
@@ -49,6 +50,7 @@ export const TrenchRow = memo(function TrenchRow({
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5">
+          <Star chain={t.chain} address={t.address} size={11} />
           <span className="text-[13px] font-semibold">{t.symbol}</span>
           <span className="min-w-0 truncate text-[11px] text-muted">{t.name}</span>
           <span className="num shrink-0 text-[10.5px] text-lime">{fmtAge(t.createdAt)}</span>

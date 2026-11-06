@@ -12,6 +12,7 @@ import { TradeTicket } from './trade-ticket';
 import { InstantTrade } from './instant-trade';
 import { CoinActivity } from './coin-activity';
 import { SupplySplit } from './supply-split';
+import { Star } from './star';
 import { PriceAlertButton } from './price-alerts';
 import { Avatar, Delta, Flash, Icon, Segmented, Skeleton, Svg } from './ui';
 
@@ -278,6 +279,7 @@ function CoinHeader(p: {
         <Avatar name={p.symbol} src={p.image} size={42} />
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex items-center gap-2">
+            <Star chain={p.chain} address={p.address} size={16} />
             <h1 className="text-[17px] font-semibold tracking-tight">{p.symbol}</h1>
             <span className="truncate text-xs text-muted">{p.name}</span>
             {p.dex?.paid && <span className="rounded bg-sky/15 px-1.5 text-[10px] font-bold text-sky">DEX PAID</span>}

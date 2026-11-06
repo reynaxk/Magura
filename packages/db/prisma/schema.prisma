@@ -59,6 +59,7 @@ model User {
   rewards        RewardEntry[]
   rewardClaims   RewardClaim[]
   priceAlerts    PriceAlert[]
+  watchlist     WatchItem[]
 }
 
 model Wallet {
@@ -581,4 +582,15 @@ model NewsItem {
   createdAt   DateTime @default(now())
 
   @@index([publishedAt])
+}
+
+/// Coins a user starred (Watchlist).
+model WatchItem {
+  userId    String
+  chain     Chain
+  address   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, chain, address])
 }

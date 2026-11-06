@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fmtAge, fmtUsd, type ChatMessageDTO, type HuntToken } from '@magura/shared';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { useWatchlist } from '@/lib/watchlist';
 import { Avatar, Delta } from './ui';
 
 type FriendBuy = { chain: string; address: string; symbol: string; buyers: { handle: string; avatarUrl: string | null }[]; totalUsd: number };
@@ -13,13 +14,14 @@ type FriendBuy = { chain: string; address: string; symbol: string; buyers: { han
 /** Pro layout left rail: what's moving + what people are calling. Always open. */
 export function ProSidebar() {
   const { me } = useSession();
-  const [tab, setTab] = useState<'hot' | 'new' | 'friends'>('hot');
+  const [tab, setTab] = useState<'hot' | 'new' | 'friends' | 'watch'>('hot');
+  const watch = useWatchlist();
   const filter = JSON.stringify({ chains: ['solana', 'base', 'bsc', 'ethereum'], sources: [], ranges: {} });
   const list = useQuery({
     queryKey: ['pro-rail', tab],
     queryFn: () => api<HuntToken[]>(`/market/hunt?sort=${tab === 'new' ? 'new' : 'hot'}&limit=25&f=${encodeURIComponent(filter)}`),
     refetchInterval: 15_000,
-    enabled: tab !== 'friends',
+    enabled: tab === 'hot' || tab === 'new',
   });
   const friends = useQuery({ queryKey: ['hunt-friends'], queryFn: () => api<FriendBuy[]>('/market/hunt/friends'), enabled: !!me && tab === 'friends', refetchInterval: 30_000 });
   const calls = useQuery({ queryKey: ['hunt-calls'], queryFn: () => api<(ChatMessageDTO & { group: { slug: string; name: string } })[]>('/market/hunt/calls'), refetchInterval: 30_000 });
@@ -31,6 +33,7 @@ export function ProSidebar() {
           [
             ['hot', 'Trending'],
             ['new', 'Newest'],
+            ['watch', '★'],
             ['friends', 'Friends'],
           ] as const
         ).map(([id, label]) => (
@@ -40,7 +43,25 @@ export function ProSidebar() {
         ))}
       </div>
       <div className="scroll-thin max-h-[52vh] overflow-y-auto">
-        {tab !== 'friends' &&
+        {tab === 'watch' && !me && <p className="p-4 text-[12px] text-muted">Log in to star coins.</p>}
+        {tab === 'watch' && me && !watch.rows.length && <p className="p-4 text-[12px] text-muted">Tap the ★ on any coin to keep it here.</p>}
+        {tab === 'watch' &&
+          watch.rows.map((w) => (
+            <Link key={`${w.chain}:${w.address}`} href={`/t/${w.chain}/${w.address}`} className="flex items-center gap-2 border-b border-line/60 px-2.5 py-1.5 hover:bg-hover">
+              <Avatar name={w.token?.symbol ?? '?'} src={w.token?.imageUrl} size={26} />
+              <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                <span className="truncate text-[12px] font-semibold">{w.token?.symbol ?? `${w.address.slice(0, 4)}…`}</span>
+                <span className="num text-[10px] text-faint">{w.token ? fmtAge(w.token.createdAt) : ''}</span>
+              </span>
+              <span className="num flex flex-col items-end leading-tight">
+                <span className="text-[11px]">{fmtUsd(w.token?.marketCapUsd)}</span>
+                <span className="text-[10px]">
+                  <Delta value={w.token?.priceChange1h ?? null} />
+                </span>
+              </span>
+            </Link>
+          ))}
+        {(tab === 'hot' || tab === 'new') &&
           list.data?.map((t) => (
             <Link key={`${t.chain}:${t.address}`} href={`/t/${t.chain}/${t.address}`} className="flex items-center gap-2 border-b border-line/60 px-2.5 py-1.5 hover:bg-hover">
               <Avatar name={t.symbol} src={t.imageUrl} size={26} />

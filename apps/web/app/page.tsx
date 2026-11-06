@@ -12,6 +12,7 @@ import type { LeaderRow } from '@/components/terminal';
 import { Avatar, Delta, Empty, Icon, RiskTags, Segmented, Svg, ChatBadge, Flash } from '@/components/ui';
 import { useDensity } from '@/lib/prefs';
 import { ProSidebar } from '@/components/pro-sidebar';
+import { Star } from '@/components/star';
 import { useInstantTrade } from '@/lib/trade';
 
 type Sort = 'hot' | 'm5' | 'gainers' | 'losers' | 'volume' | 'new';
@@ -155,6 +156,7 @@ export default function HuntPage() {
                             <Avatar name={t.symbol} src={t.imageUrl} size={compact ? 26 : 34} />
                             <span className="flex min-w-0 flex-col leading-tight">
                               <span className="flex items-center gap-1.5 font-semibold">
+                                <Star chain={t.chain} address={t.address} size={12} />
                                 {t.symbol}
                                 <span className="num rounded border border-line-3 px-1 text-[9px] font-medium text-muted">{CHAIN_SHORT[t.chain]}</span>
                                 {t.dexPaid && <span className="rounded bg-sky/15 px-1 text-[9px] font-bold text-sky">DS</span>}

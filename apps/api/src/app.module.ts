@@ -20,6 +20,7 @@ import { PriceAlertsController, PriceAlertsService } from './notifications/price
 import { AlertsService } from './notifications/alerts.service';
 import { TelegramController } from './notifications/telegram.controller';
 import { TrackedController } from './market/tracked.controller';
+import { WatchlistController } from './market/watchlist.controller';
 import { TrenchesService } from './market/trenches.service';
 import { IntelService } from './market/intel.service';
 import { SmartService } from './market/smart.service';
@@ -72,7 +73,7 @@ class HealthController {
     GroupsController,
     DmsController,
     RtcController,
-    TrackedController,
+    TrackedController, WatchlistController,
     OrdersController,
     ReferralsController,
     FeedController,

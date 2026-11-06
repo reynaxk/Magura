@@ -61,6 +61,12 @@ export interface PairSummary {
   priceUsd: number | null;
   priceChange24h: number | null;
   priceChange1h?: number | null;
+  priceChange5m?: number | null;
+  priceChange6h?: number | null;
+  volume1h?: number | null;
+  buys24h?: number | null;
+  sells24h?: number | null;
+  links?: { type: string; url: string }[];
   volume5m?: number | null;
   buys5m?: number | null;
   sells5m?: number | null;

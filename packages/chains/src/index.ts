@@ -1,6 +1,6 @@
 export * from './http';
 export * from './rpc';
-export { dexscreener } from './market/dexscreener';
+export { dexscreener, type DexOrders } from './market/dexscreener';
 export { geckoterminal, type NewPool, type PoolTrade } from './market/geckoterminal';
 export { coinbase } from './market/coinbase';
 export * from './swap';

@@ -82,13 +82,24 @@ export class MarketController {
   async token(@Param('chain') chainRaw: string, @Param('address') rawAddr: string) {
     const chain = parse(zChain, chainRaw);
     const address = addr(chain, rawAddr);
-    const [pair, row, risk] = await Promise.all([
+    const [pair, row, risk, orders] = await Promise.all([
       this.redis.cached(`pair:${chain}:${address}`, 15, () => dexscreener.bestPair(chain, address)).catch(() => null),
       this.prisma.db.token.findUnique({ where: { chain_address: { chain, address } } }),
       this.redis.cached(`risk:${chain}:${address}`, 600, () => goplus.tokenRisk(chain, address).catch(() => null)),
+      this.redis.cached(`dsorders:${chain}:${address}`, 600, () => dexscreener.orders(chain, address).catch(() => null)),
     ]);
     if (!pair && !row) throw new NotFoundException('token_not_found');
-    return { chain, address, pair, token: row, risk };
+    // other coins with the same ticker — copycats or the original
+    const symbol = pair?.baseToken.symbol ?? row?.symbol;
+    const sameName = symbol
+      ? await this.prisma.db.token.findMany({
+          where: { symbol: { equals: symbol, mode: 'insensitive' }, NOT: { address } },
+          orderBy: [{ marketCapUsd: { sort: 'desc', nulls: 'last' } }],
+          take: 6,
+          select: { chain: true, address: true, symbol: true, name: true, imageUrl: true, marketCapUsd: true, createdAt: true },
+        })
+      : [];
+    return { chain, address, pair, token: row, risk, dex: orders, sameName };
   }
 
   /** Live swaps on a coin, each wallet labelled (you, Magura, following, tracked, dev). */

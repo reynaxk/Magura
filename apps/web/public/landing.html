@@ -214,6 +214,81 @@ h1 .w>span{display:inline-block;transform:translateY(105%);animation:rise 1s var
 
 .trw .tg,.mr .tg{font-size:8px;padding:0 4px;border-radius:3px}
 .hero{position:relative}
+/* trenches board */
+.b-hunt{grid-template-columns:1fr 1fr}
+.span2{grid-column:1/-1}
+.board{display:grid;grid-template-columns:repeat(3,1fr);margin-top:22px;border:1px solid #1A1D25;border-radius:12px;overflow:hidden;background:#08090C;font-family:var(--mono)}
+.bcol+.bcol{border-left:1px solid #1A1D25}
+.bh{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-bottom:1px solid #1A1D25;background:#0B0D11;font:600 12px var(--sans);color:#E9ECF2}
+.bh .dot{width:6px;height:6px}
+.bh .p{margin-left:auto;display:flex;gap:3px;font:600 9.5px var(--mono)}
+.bh .p span{padding:2px 6px;border-radius:4px;border:1px solid #1F232B;color:#7A8397}.bh .p .on{color:#2FE39A;border-color:#1D4A37;background:#0B1F17}
+.bh .f{font:500 9.5px var(--mono);color:#7A8397;border:1px solid #1F232B;border-radius:4px;padding:2px 6px}
+.blist{height:372px;overflow:hidden}
+.br{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid #1A1D25;align-items:center;transition:background .3s}
+.br:hover{background:#0E1015}
+.br.in{animation:slidein .6s var(--ease)}
+.br .a{position:relative;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font:800 12px var(--sans);color:#04140C;flex:none}
+.br .a::after{content:"";position:absolute;left:1px;right:1px;bottom:-5px;height:2.5px;border-radius:2px;background:linear-gradient(90deg,var(--c) var(--p),#1A1D25 var(--p))}
+.br .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.br .n{display:flex;align-items:center;gap:6px;font-size:10.5px;white-space:nowrap;overflow:hidden}.br .n b{font:700 12.5px var(--sans);color:#E9ECF2}.br .n .nm{color:#7A8397;overflow:hidden;text-overflow:ellipsis}.br .n .ag{color:#2FE39A}
+.br .st{display:flex;gap:8px;font-size:9.5px;color:#7A8397;white-space:nowrap;overflow:hidden}.br .st b{color:#C9CFDA;font-weight:500}
+.br .rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.br .mc{font-size:11px;font-weight:600;color:#E9ECF2;white-space:nowrap}.br .mc small{color:#5d6577;font-weight:400;font-size:9px}
+.br .qb{font-size:10px;font-weight:700;color:#2FE39A;background:#0B1F17;border:1px solid #1D4A37;border-radius:6px;padding:3px 8px;white-space:nowrap}
+.br .tg{font-size:8px;padding:0 4px;border-radius:3px}
+.b-hunt .card h3+p{max-width:60ch}
+
+/* smart wallets table */
+.swt{margin-top:20px;border:1px solid #1A1D25;border-radius:12px;overflow:hidden;background:#08090C;font:500 11.5px var(--mono)}
+.swr{display:grid;grid-template-columns:30px 1.6fr 1fr 1.1fr .6fr 120px 1fr 130px;align-items:center;gap:12px;height:46px;padding:0 14px;border-bottom:1px solid #1A1D25;transition:background .4s}
+.swr.h{height:32px;font-size:9.5px;letter-spacing:.1em;color:#5d6577;background:#0B0D11}
+.swr .w{display:flex;align-items:center;gap:8px;color:#E9ECF2;font-weight:600;min-width:0}
+.swr .w i{width:22px;height:22px;border-radius:50%;flex:none}
+.swr .w .tg{font-size:8px;padding:0 4px;border-radius:3px}
+.swr .wr{display:flex;align-items:center;gap:8px}.swr .wr span{flex:1;height:4px;background:#1A1D25;border-radius:2px;overflow:hidden}.swr .wr span i{display:block;height:100%;background:#2FE39A;transition:width .8s var(--ease)}
+.swr svg{width:120px;height:26px}
+.swr .act{display:flex;gap:5px;justify-content:flex-end}
+.swr .act span{font:600 10px var(--mono);padding:4px 9px;border-radius:6px;border:1px solid #1F232B;color:#C9CFDA}.swr .act .cp{color:#04140C;background:#2FE39A;border-color:#2FE39A}
+.swr.up{animation:fg 1.2s}
+
+/* portfolio */
+.b-port{grid-template-columns:1.35fr 1fr}
+.cal-h{display:flex;align-items:baseline;justify-content:space-between;margin-top:20px;font:500 11px var(--mono);color:var(--mu)}
+.cal-h b{font:700 26px var(--mono);letter-spacing:-.03em;color:var(--g)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px;font-family:var(--mono)}
+.cal .dh{font-size:9.5px;color:#5d6577;text-align:center;letter-spacing:.08em;padding-bottom:2px}
+.cal .d{aspect-ratio:1.25;border-radius:7px;border:1px solid #1A1D25;padding:5px 6px;display:flex;flex-direction:column;justify-content:space-between;font-size:9px;color:#5d6577;transition:background .6s,border-color .6s}
+.cal .d b{font-size:10.5px;font-weight:600;text-align:right}
+.cal .d.e{border-color:transparent}
+.cal .d.today{box-shadow:inset 0 0 0 1px #2FE39A}
+.cal-f{display:flex;gap:18px;margin-top:14px;font:500 11px var(--mono);color:var(--mu);flex-wrap:wrap}.cal-f b{color:var(--tx);font-weight:600}
+.share{margin-top:20px;aspect-ratio:1.6;border-radius:16px;position:relative;overflow:hidden;padding:20px;background:radial-gradient(120% 90% at 100% 0,rgba(47,227,154,.35),transparent 55%),linear-gradient(160deg,#0d1714,#07090a);border:1px solid rgba(47,227,154,.3);box-shadow:0 30px 60px -20px rgba(47,227,154,.25);display:flex;flex-direction:column;transform:rotate(-2deg);transition:transform .5s var(--ease)}
+.card:hover .share{transform:rotate(0) scale(1.02)}
+.share::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(47,227,154,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(47,227,154,.07) 1px,transparent 1px);background-size:22px 22px;-webkit-mask:linear-gradient(200deg,#000,transparent 70%);mask:linear-gradient(200deg,#000,transparent 70%)}
+.share>*{position:relative}
+.share .top{display:flex;align-items:center;justify-content:space-between;font:800 11px var(--sans);letter-spacing:.16em}
+.share .tk{display:flex;align-items:center;gap:8px;margin-top:auto;font:700 13px var(--sans)}
+.share .pct{font:800 clamp(44px,5vw,64px) var(--sans);letter-spacing:-.05em;line-height:1;color:var(--g);text-shadow:0 0 40px rgba(47,227,154,.5)}
+.share .row{display:flex;gap:18px;margin-top:10px;font:500 10.5px var(--mono);color:var(--mu)}.share .row b{display:block;color:var(--tx);font-weight:600;font-size:12px}
+.share .ref{position:absolute;right:20px;bottom:18px;font:500 10px var(--mono);color:var(--dim);text-align:right}
+.share .ref b{display:block;color:var(--tx);font-size:12px}
+
+/* everything inside */
+.idx{display:grid;grid-template-columns:repeat(4,1fr);margin-top:56px;border:1px solid var(--b1);border-radius:18px;overflow:hidden;background:rgba(11,15,17,.7)}
+.idx>div{padding:24px;border-left:1px solid var(--b1)}
+.idx>div:first-child{border-left:0}
+.idx h4{font:600 11px var(--mono);letter-spacing:.14em;color:var(--g);margin-bottom:16px;display:flex;justify-content:space-between}
+.idx h4 span{color:var(--dim)}
+.idx ul{list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--mu)}
+.idx li{display:flex;align-items:center;gap:9px;transition:color .2s}
+.idx li:hover{color:var(--tx)}
+.idx li::before{content:"";width:5px;height:5px;border-radius:1px;background:var(--b2);flex:none;transition:background .2s}
+.idx li:hover::before{background:var(--g)}
+.idx li em{font-style:normal;margin-left:auto;font:600 9px var(--mono);color:#04140C;background:var(--g);padding:1px 5px;border-radius:3px}
+@media (max-width:1100px){.board{grid-template-columns:1fr 1fr}.bcol:nth-child(3){display:none}.swr{grid-template-columns:24px 1.5fr 1fr 1fr 110px}.swr>:nth-child(5),.swr>:nth-child(6),.swr>:nth-child(7){display:none}.b-port{grid-template-columns:1fr}.idx{grid-template-columns:1fr 1fr}.idx>div:nth-child(3){border-left:0}.idx>div:nth-child(n+3){border-top:1px solid var(--b1)}}
+@media (max-width:760px){.board{grid-template-columns:1fr}.bcol:nth-child(2){display:none}.bcol+.bcol{border-left:0}.swr{grid-template-columns:22px 1.4fr 1fr 70px;gap:8px}.swr>:nth-child(4){display:none}.swr .act span:first-child{display:none}.swr .w .tg{display:none}.swr>span{white-space:nowrap}.idx{grid-template-columns:1fr}.idx>div{border-left:0!important;border-top:1px solid var(--b1)}.idx>div:first-child{border-top:0}.cal .d{font-size:0}.cal .d b{font-size:8px}}
+
 /* sections */
 section{position:relative}
 .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
@@ -236,8 +311,8 @@ h2 em{font-style:normal;color:var(--dim)}
 .card h3{font-size:19px;font-weight:700;letter-spacing:-.02em}
 .card p{color:var(--mu);font-size:14.5px;margin-top:6px;max-width:44ch}
 .card .ck{font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--dim);margin-bottom:12px}
-.b-hunt{grid-template-columns:1.5fr 1fr}
-.b-hunt .tall{grid-row:span 2}
+
+
 /* radar */
 .radar{position:relative;width:100%;max-width:440px;aspect-ratio:1;margin:28px auto 0}
 .radar .ring{position:absolute;border:1px solid rgba(47,227,154,.16);border-radius:50%;inset:var(--i)}
@@ -418,7 +493,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
       MAGURA
     </a>
     <div class="nav-links">
-      <a href="#trenches">Trenches</a><a href="#intel">Intel</a><a href="#social">Social</a><a href="#chains">Chains</a><a href="#loop">How it works</a>
+      <a href="#trenches">Trenches</a><a href="#intel">Intel</a><a href="#social">Social</a><a href="#portfolio">Portfolio</a><a href="#chains">Chains</a><a href="#loop">How it works</a>
     </div>
     <div class="nav-r">
       <a href="/trenches" class="signin" data-auth-hide>Sign in</a>
@@ -484,7 +559,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
         <div class="t-mode"><span class="on">Market</span><span>Limit</span><span>Auto</span><span style="margin-left:auto;color:#5d6577">P1 P2 <b style="color:#2FE39A">P3</b></span></div>
         <div class="t-inp"><b id="amt">0.5</b><span><i class="sq" style="background:#9945FF"></i>SOL</span></div>
         <div class="t-pre" id="presets"><span>0.1</span><span class="on">0.5</span><span>1</span><span>5</span></div>
-        <div class="t-opts"><span>Slippage <b>15%</b></span><span>MEV <b class="g">On</b></span><span>TP/SL <b>+100 / −30</b></span></div>
+        <div class="t-opts"><span>Slippage <b>15%</b></span><span>Preset <b class="g">P3</b></span><span>TP/SL <b>+100 / −30</b></span></div>
         <div class="t-buy" id="buyBtn">Buy 0.5 SOL ORBIT</div>
         <div class="t-h6"><span>SAFETY</span><span class="g">9 / 10</span></div>
         <div class="t-risk"><div>TOP 10<b id="r1">18.2%</b></div><div>DEV<b class="g">0%</b></div><div>SNIPERS<b id="r2">3.1%</b></div><div>INSIDERS<b id="r3">1.4%</b></div><div>BUNDLERS<b class="r" id="r4">5.8%</b></div><div>LP<b class="g">Burned</b></div></div>
@@ -532,16 +607,18 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
     <h2 class="rv" style="--d:.06s">Built for traders who refuse <em>to be exit liquidity.</em></h2>
     <p class="lede rv" style="--d:.12s">Every new pair the second it launches, sorted into New, Final stretch and Migrated. Fifty filters deep, so the noise never reaches you.</p>
     <div class="bento b-hunt">
-      <div class="card tall rv">
-        <div class="ck">LIVE SCANNER</div>
-        <h3>See it before the timeline does.</h3>
-        <p>Magura reads launches straight off the chain and scores each one for bundles, snipers, dev behaviour and smart-money entries in real time.</p>
-        <div class="radar" id="radar" aria-hidden="true">
-          <div class="ring" style="--i:0"></div><div class="ring" style="--i:16%"></div><div class="ring" style="--i:32%"></div><div class="ring" style="--i:44%"></div>
-          <div class="cross"></div><div class="sweep"></div><div class="core-dot"></div>
+      <div class="card span2 rv">
+        <div class="ck">LIVE · TRENCHES</div>
+        <h3>Every launch, the second it happens.</h3>
+        <p>New pairs, coins about to finish their bonding curve, and fresh migrations, in three live columns. Each column has its own filters and its own buy presets.</p>
+        <div class="board" aria-hidden="true">
+          <div class="bcol"><div class="bh"><span class="dot"></span>New pairs<span class="f">Filter</span><span class="p"><span>P1</span><span class="on">P2</span><span>P3</span></span></div><div class="blist" id="bc0"></div></div>
+          <div class="bcol"><div class="bh"><span class="dot" style="background:#F5C451"></span>Final stretch<span class="f">Filter</span><span class="p"><span class="on">P1</span><span>P2</span><span>P3</span></span></div><div class="blist" id="bc1"></div></div>
+          <div class="bcol"><div class="bh"><span class="dot" style="background:#00E0B8"></span>Migrated<span class="f">Filter</span><span class="p"><span>P1</span><span>P2</span><span class="on">P3</span></span></div><div class="blist" id="bc2"></div></div>
         </div>
       </div>
-      <div class="card rv" style="--d:.08s">
+      
+<div class="card rv" style="--d:.08s">
         <div class="ck">DEEP FILTERS</div>
         <h3>Stack filters. Watch the junk vanish.</h3>
         <div class="fstack" id="fstack">
@@ -606,6 +683,15 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
     <h2 class="rv" style="--d:.06s">Follow the wallets <em>that move first.</em></h2>
     <p class="lede rv" style="--d:.12s">Magura ranks the most profitable wallets on-chain every day. Track them, get pinged the moment they buy, or copy every trade automatically.</p>
     <div class="bento b-soc">
+      <div class="card span2 rv">
+        <div class="ck">SMART MONEY · RANKED DAILY</div>
+        <h3>The most profitable wallets on-chain, ranked every day.</h3>
+        <p>Ranked by 7-day profit and win rate on real on-chain trades. Track one to get its trades as alerts, or copy it in two taps.</p>
+        <div class="swt" id="swt" aria-hidden="true">
+          <div class="swr h"><span>#</span><span>WALLET</span><span>7D PNL</span><span>WIN RATE</span><span>TRADES</span><span>7D</span><span>LAST TRADE</span><span></span></div>
+        </div>
+      </div>
+
       <div class="card rv">
         <div class="ck">SMART MONEY · COPY</div>
         <h3>Copy any wallet. Within seconds.</h3>
@@ -638,11 +724,40 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
   </div>
 </section>
 
+<section class="sec" id="portfolio">
+  <div class="wrap">
+    <div class="kick rv">04 / PORTFOLIO</div>
+    <h2 class="rv" style="--d:.06s">Every trade, <em>on the record.</em></h2>
+    <p class="lede rv" style="--d:.12s">Realized and unrealized PnL on every coin, a calendar of your green and red days, and a card ready to share when you hit.</p>
+    <div class="bento b-port">
+      <div class="card rv">
+        <div class="ck">PNL CALENDAR</div>
+        <h3>See your streaks at a glance.</h3>
+        <div class="cal-h" aria-hidden="true"><span>OCTOBER 2026 · REALIZED</span><b id="calTot">+$0</b></div>
+        <div class="cal" id="cal" aria-hidden="true"></div>
+        <div class="cal-f" aria-hidden="true"><span>Green days <b id="calG">0</b></span><span>Best day <b class="g" id="calB">+$0</b></span><span>Win streak <b id="calS">0</b></span></div>
+      </div>
+      <div class="card rv" style="--d:.08s">
+        <div class="ck">PNL CARDS</div>
+        <h3>Hit something? Share it.</h3>
+        <p>One tap turns any trade into a card with your referral built in.</p>
+        <div class="share" aria-hidden="true">
+          <div class="top"><span style="display:flex;align-items:center;gap:7px"><svg width="20" height="20" viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="18" ry="8" fill="none" stroke="#2FE39A" stroke-width="1.6" transform="rotate(-24 20 20)"/><path d="M10 28V12l10 10 10-10v16" fill="none" stroke="#E8EDEC" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>MAGURA</span><span class="mono dim" style="letter-spacing:0;font-weight:500;font-size:10px">magura.app</span></div>
+          <div class="tk"><span class="av" style="background:var(--g);width:24px;height:24px;border-radius:7px">KI</span>KITSU <span class="mono dim" style="font-weight:500;font-size:10.5px">· SOL · held 2h 14m</span></div>
+          <div class="pct" id="shareP">+342%</div>
+          <div class="row"><span>Bought<b>$250</b></span><span>Sold<b id="shareS">$1,105</b></span><span>Profit<b class="g" id="shareG">+$855</b></span></div>
+          <div class="ref">@kael<b>magura.app/r/KAEL</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="sec" id="chains">
   <div class="wrap">
     <div class="bento b-chain" style="margin-top:0">
       <div>
-        <div class="kick rv">04 / MULTICHAIN</div>
+        <div class="kick rv">05 / MULTICHAIN</div>
         <h2 class="rv" style="--d:.06s">Four chains. <em>One terminal.</em></h2>
         <p class="lede rv" style="--d:.12s">One wallet, one feed, one portfolio across every chain where the action is. Switch chains without switching apps.</p>
         <div class="clist rv" style="--d:.18s">
@@ -670,7 +785,7 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
 
 <section class="sec" id="loop">
   <div class="wrap">
-    <div class="kick rv">05 / THE LOOP</div>
+    <div class="kick rv">06 / THE LOOP</div>
     <h2 class="rv" style="--d:.06s">Three words. <em>One habit.</em></h2>
     <div class="loop" id="loopEl">
       <div class="step" style="--d:0s"><div class="n">01</div><h3>Find.</h3><p>Trenches, trending and smart-money flow surface the coin while it's still early.</p><ul><li>50+ filters per column</li><li>Holder tags on every coin</li><li>Smart wallets ranked daily</li></ul></div>
@@ -680,9 +795,22 @@ footer{border-top:1px solid var(--b1);padding:60px 0 40px;background:rgba(5,6,7,
   </div>
 </section>
 
+<section class="sec" id="inside">
+  <div class="wrap">
+    <div class="kick rv">07 / EVERYTHING INSIDE</div>
+    <h2 class="rv" style="--d:.06s">One terminal. <em>Nothing missing.</em></h2>
+    <div class="idx rv" style="--d:.12s">
+      <div><h4>FIND <span>01</span></h4><ul><li>Trenches · 3 live columns</li><li>Trending by 5m, 1h, 24h</li><li>Smart money ranking</li><li>50+ coin filters</li><li>Keyword &amp; dev filters</li><li>Watchlist</li><li>Monitor</li><li>Search ⌘K</li></ul></div>
+      <div><h4>ANALYSE <span>02</span></h4><ul><li>Holder tags on every wallet</li><li>Bundler &amp; sniper detection</li><li>Insider &amp; fresh wallets</li><li>Dev history &amp; past launches</li><li>Top traders · early buyers</li><li>Same-name coins</li><li>DEX paid status</li><li>Supply split</li></ul></div>
+      <div><h4>TRADE <span>03</span></h4><ul><li>Hotkeys 1–4 · Enter</li><li>Presets P1 · P2 · P3</li><li>Take profit · stop loss</li><li>Trailing stops · DCA</li><li>Limit buys</li><li>Dev-sell exit</li><li>Migration buy</li><li>Dev snipe</li></ul></div>
+      <div><h4>SOCIAL <span>04</span></h4><ul><li>Follow traders</li><li>Copy any wallet</li><li>Track wallets live</li><li>Groups &amp; competitions</li><li>Calls with live PnL</li><li>Push &amp; Telegram alerts</li><li>PnL calendar &amp; cards</li><li>Referrals</li></ul></div>
+    </div>
+  </div>
+</section>
+
 <section class="sec" aria-labelledby="faqh">
   <div class="wrap">
-    <div class="kick rv">06 / FAQ</div>
+    <div class="kick rv">08 / FAQ</div>
     <h2 class="rv" id="faqh" style="--d:.06s">Questions, <em>answered.</em></h2>
     <div class="faq rv" style="--d:.12s">
       <details><summary>Is Magura a futures or leverage platform?</summary><p>No. Magura is spot only. You buy and sell real tokens, so there are no perps, no leverage and no liquidations.</p></details>
@@ -809,10 +937,33 @@ const CH={};
   const t=$('#mtoast'); const N=[()=>[`${pick(WAL)} bought ${pick(TOK)}`,`${usd(rnd(300,9000))} · tracked wallet`],()=>[`${pick(TOK)} hit your TP +100%`,'Sold 50% · auto order'],()=>[`${ri(2,5)} smart wallets in ${pick(TOK)}`,'Matched "Fresh & safe"'],()=>[`${pick(TOK)} dev sold`,'You exited in 0.6s']];
   if(!RM) setInterval(()=>{ if(document.hidden)return; const [a,b]=pick(N)(); $('#mtb').textContent=a; $('#mts').textContent=b; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2600) },5200) })();
 
-/* radar */
-(()=>{ const R=$('#radar'); const B=[]; for(let i=0;i<7;i++){ const a=i/7*Math.PI*2+rnd(-.2,.2), d=rnd(.18,.44), b=document.createElement('div'); b.className='blip'; b.style.left=50+Math.cos(a-Math.PI/2)*d*100+'%'; b.style.top=50+Math.sin(a-Math.PI/2)*d*100+'%'; b._a=((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2); b.innerHTML=`<i></i><span>${TOK[i]} · ${ri(1,40)}m</span>`; R.appendChild(b); B.push(b) }
-  if(RM){ B.forEach(b=>b.classList.add('hot')); return }
-  const t0=performance.now(); (function loop(t){ const ang=((t-t0)/4000*Math.PI*2)%(Math.PI*2); B.forEach(b=>{ let diff=ang-b._a; if(diff<0)diff+=Math.PI*2; const hot=diff<1.3; if(hot&&!b.classList.contains('hot')){ b.classList.add('hot'); b.querySelector('span').textContent=`${pick(TOK)} · ${ri(1,40)}m` } else if(!hot) b.classList.remove('hot') }); requestAnimationFrame(loop) })(t0) })();
+/* trenches board */
+(()=>{ const NM={ORBIT:'Orbit Protocol',KITSU:'Kitsu Inu',GRID:'Gridlock',MOCHI:'Mochi Cat',LUMA:'Luma AI',NOVA:'Nova',ZEPH:'Zephyr',PIXL:'Pixel Pals',RUNE:'Runestone',HALO:'Halo',DRIFT:'Drift King',EMBR:'Ember',SOOT:'Soot Sprite',VOLT:'Volt',BLOOM:'Bloom'};
+  const cols=[$('#bc0'),$('#bc1'),$('#bc2')]; if(!cols[0]) return;
+  const TG=[['smart','SM'],['bundler','BND'],['kol','KOL'],['sniper','SNP'],['fresh','FRESH']];
+  const mk=(ci,age)=>{ const t=pick(TOK), c=tokColor(t), d=document.createElement('div'); const mc=ci===0?rnd(3e3,2.5e4):ci===1?rnd(4e4,7e4):rnd(9e4,2.4e6); const p=ci===0?ri(3,40):ci===1?ri(80,99):100; d.className='br';
+    const tags=TG.filter(()=>Math.random()<.18).map(g=>`<span class="tg ${g[0]}">${g[1]}</span>`).join('');
+    const dev=Math.random()<.2?'<span class="tg bundler">DEV SOLD</span>':'';
+    d.innerHTML=`<span class="a" style="background:${c};--c:${ci===2?'#00E0B8':c};--p:${p}%">${t.slice(0,2)}</span><div class="mid"><div class="n"><b>${t}</b><span class="nm">${NM[t]}</span><span class="ag">${age}</span>${tags}${dev}</div><div class="st"><span>V <b>${usd(mc*rnd(.2,1.2))}</b></span><span><b>${ri(12,900)}</b>h</span><span><span class="g">${ri(5,240)}</span>/<span class="r">${ri(1,90)}</span></span><span>T10 <b>${ri(9,38)}%</b></span><span>${ci===2?'LP <b class="g">burned</b>':'Curve <b>'+p+'%</b>'}</span></div></div><div class="rt"><span class="mc"><small>MC </small>${usd(mc)}</span><span class="qb">⚡ ${['0.25','0.5','1'][ci]}</span></div>`; return d };
+  cols.forEach((col,ci)=>{ for(let i=0;i<8;i++) col.appendChild(mk(ci,ci===2?ri(1,40)+'m':ri(2,59)+'s')) });
+  if(RM) return;
+  const sp=[1600,2900,4300]; cols.forEach((col,ci)=>setInterval(()=>{ if(document.hidden)return; const d=mk(ci,ci===2?'now':'1s'); d.classList.add('in'); col.prepend(d); while(col.children.length>9) col.lastChild.remove() },sp[ci])) })();
+
+/* smart wallets table */
+(()=>{ const box=$('#swt'); if(!box) return; const TG=[['smart','SMART'],['kol','KOL'],['whale','WHALE'],['sniper','SNIPER']];
+  const W=WAL.slice(0,6).map((n,i)=>({n,pnl:rnd(40,420),wr:rnd(56,84),tr:ri(40,380),tag:i<4?TG[i%4]:null,c:COL[i%COL.length],pts:Array.from({length:14},(_,k)=>k*rnd(.4,1.4)+rnd(-2,2))}));
+  const spark=pts=>{ const mn=Math.min(...pts),mx=Math.max(...pts); const d=pts.map((v,i)=>`${i?'L':'M'}${(i/(pts.length-1)*118+1).toFixed(1)},${(24-(v-mn)/(mx-mn||1)*22).toFixed(1)}`).join(''); return `<svg viewBox="0 0 120 26"><path d="${d} L119,26 L1,26Z" fill="rgba(47,227,154,.1)"/><path d="${d}" fill="none" stroke="#2FE39A" stroke-width="1.5"/></svg>` };
+  W.forEach(w=>{ const r=document.createElement('div'); r.className='swr'; w.el=r; box.appendChild(r) });
+  const render=(flash)=>{ W.sort((a,b)=>b.pnl-a.pnl); W.forEach((w,i)=>{ box.appendChild(w.el); w.el.innerHTML=`<span class="dim">${i+1}</span><span class="w"><i style="background:${w.c}"></i>${w.n}${w.tag?`<span class="tg ${w.tag[0]}">${w.tag[1]}</span>`:''}</span><span class="g">+${w.pnl.toFixed(1)} SOL</span><span class="wr">${w.wr.toFixed(0)}%<span><i style="width:${w.wr}%"></i></span></span><span>${w.tr}</span>${spark(w.pts)}<span class="mu">${w.last||'buy '+pick(TOK)} <span class="dim">${ri(1,59)}s</span></span><span class="act"><span>Track</span><span class="cp">Copy</span></span>`; if(flash===w){ w.el.classList.remove('up'); void w.el.offsetWidth; w.el.classList.add('up') } }) };
+  render(); every(()=>{ const w=pick(W); w.pnl+=rnd(.5,14); w.tr++; w.wr=Math.min(92,Math.max(52,w.wr+rnd(-1,1.4))); w.pts.shift(); w.pts.push(w.pts[w.pts.length-1]+rnd(-.5,2.5)); w.last=(Math.random()<.7?'buy ':'sell ')+pick(TOK); render(w) },1900) })();
+
+/* pnl calendar + share card */
+(()=>{ const box=$('#cal'); if(!box) return; ['MON','TUE','WED','THU','FRI','SAT','SUN'].forEach(d=>box.insertAdjacentHTML('beforeend',`<div class="dh">${d}</div>`));
+  const first=3, days=31, today=31; const cells=[]; for(let i=0;i<first;i++) box.insertAdjacentHTML('beforeend','<div class="d e"></div>');
+  for(let d=1;d<=days;d++){ const el=document.createElement('div'); el.className='d'; box.appendChild(el); cells.push(el) }
+  const gen=()=>{ let tot=0,g=0,best=0,st=0,cur=0; cells.forEach((el,i)=>{ const d=i+1; if(d>today+0&&d>today){ el.innerHTML=`<span>${d}</span><b></b>`; el.style.background=''; el.style.borderColor=''; return } const v=Math.random()<.68?rnd(40,2400):-rnd(30,900); tot+=v; if(v>0){g++;cur++;st=Math.max(st,cur)}else cur=0; best=Math.max(best,v); const a=Math.min(.55,Math.abs(v)/2400*.55+.08); el.style.background=v>0?`rgba(47,227,154,${a})`:`rgba(255,95,109,${a})`; el.style.borderColor=v>0?'rgba(47,227,154,.35)':'rgba(255,95,109,.35)'; el.innerHTML=`<span style="color:#C9CFDA">${d}</span><b class="${v>0?'g':'r'}" style="color:${v>0?'#C8FFE6':'#FFD1D5'}">${v>0?'+':'−'}${usd(Math.abs(v)).slice(1)}</b>` }); $('#calTot').textContent=(tot>=0?'+$':'−$')+Math.abs(Math.round(tot)).toLocaleString('en-US'); $('#calG').textContent=g+' / '+today; $('#calB').textContent='+'+usd(best); $('#calS').textContent=st+' days' };
+  gen(); every(gen,6000);
+  every(()=>{ const p=ri(120,890), s=250*(1+p/100); $('#shareP').textContent='+'+p+'%'; $('#shareS').textContent='$'+Math.round(s).toLocaleString('en-US'); $('#shareG').textContent='+$'+Math.round(s-250).toLocaleString('en-US') },4000) })();
 
 /* filter stack */
 (()=>{ const ch=$$('#fstack .chip'), m=$('#match'); const vals=[1284,412,163,71,28,9]; let i=0, cur=1284;

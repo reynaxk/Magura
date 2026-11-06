@@ -186,8 +186,10 @@ export class IntelService implements OnModuleInit {
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (pumpOk && (status === 429 || status === 403 || status === 530)) {
-        await this.redis.client.set('intel:cooldown', '1', 'EX', 60);
-        this.log.warn(`pump.fun trades API refused (${status}) — using GeckoTerminal for 60s`);
+        // 403 = their firewall blocks our server IP; that won't change in a minute
+        const ttl = status === 403 ? 1800 : 60;
+        await this.redis.client.set('intel:cooldown', '1', 'EX', ttl);
+        this.log.warn(`pump.fun trades API refused (${status}) — GeckoTerminal only for ${ttl / 60}m`);
       } else this.log.debug(`backfill ${chain}:${address} failed: ${(e as Error).message}`);
       return false;
     }

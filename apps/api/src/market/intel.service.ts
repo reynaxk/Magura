@@ -1,8 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { solanaRpc, type LaunchTrade } from '@magura/chains';
+import { geckoterminal, pumpTrades, solanaRpc, type LaunchTrade } from '@magura/chains';
 import type { Chain } from '@magura/db';
 import {
+  BUNDLE_WINDOW_MS,
   applyTrade,
   computeIntel,
   holderRows,
@@ -24,6 +25,13 @@ const CURVE_SUPPLY = 1_000_000_000;
 const TTL = 3 * 24 * 3600;
 const ledgerKey = (c: string, a: string) => `il:${c}:${a}`;
 const metaKey = (c: string, a: string) => `im:${c}:${a}`;
+const seenKey = (c: string, a: string) => `is:${c}:${a}`;
+
+/** A trade from any source (live stream, pump.fun API, GeckoTerminal). */
+interface IngestTrade extends LaunchTrade {
+  at: Date;
+  slot?: number | null;
+}
 
 export type MigrateHandler = (e: { chain: ChainId; address: string; at: Date }) => void | Promise<void>;
 export type DevSellHandler = (e: { chain: ChainId; address: string; wallet: string; soldAll: boolean; at: Date }) => void | Promise<void>;
@@ -77,27 +85,142 @@ export class IntelService implements OnModuleInit {
       .exec();
   }
 
-  /** One trade from the stream. */
+  /** One trade from the live stream. */
   async onTrade(chain: ChainId, address: string, t: LaunchTrade, at: Date) {
+    await this.ingest(chain, address, [{ ...t, at }], true);
+  }
+
+  /** Make sure a coin has ledger metadata — coins we didn't see launch get it from their DB row. */
+  private async ensureMeta(chain: ChainId, address: string): Promise<Record<string, string> | null> {
     const mk = metaKey(chain, address);
     const meta = await this.redis.client.hgetall(mk);
-    if (!meta.launchedAt) return; // we only build ledgers for coins we saw launch
-    const lk = ledgerKey(chain, address);
-    const prevRaw = await this.redis.client.hget(lk, t.wallet);
-    const prev = prevRaw ? (JSON.parse(prevRaw) as LedgerEntry) : null;
-    const isDev = meta.creator && t.wallet === meta.creator;
-    let rank = 0;
-    if (t.side === 'buy' && !prev && !isDev) rank = await this.redis.client.hincrby(mk, 'buyers', 1);
-    const next = applyTrade(prev, t, at.getTime() - Number(meta.launchedAt), rank);
-    await this.redis.client.multi().hset(lk, t.wallet, JSON.stringify(next)).expire(lk, TTL).exec();
-    this.active.add(`${chain}|${address}`);
+    if (meta.launchedAt) return meta;
+    const row = await this.prisma.db.token.findUnique({ where: { chain_address: { chain: chain as Chain, address } }, select: { createdAt: true, creator: true, launchpad: true } });
+    if (!row) return null;
+    const curve = ['pumpfun', 'fourmeme', 'flap', 'pons'].includes(row.launchpad ?? '');
+    await this.onLaunch(chain, address, row.creator, row.createdAt, curve);
+    return this.redis.client.hgetall(mk);
+  }
 
-    if (isDev && t.side === 'sell') {
-      const soldAll = next.bal <= next.bt * 0.001;
-      for (const h of this.devSellHandlers) void Promise.resolve(h({ chain, address, wallet: t.wallet, soldAll, at })).catch(() => undefined);
+  /**
+   * Apply trades (any order, duplicates ignored) to a coin's ledger.
+   * Same slot as the launch = bundle. `live` trades can fire dev-sell automations; backfilled ones can't.
+   */
+  async ingest(chain: ChainId, address: string, trades: IngestTrade[], live = false) {
+    if (!trades.length) return;
+    const meta = await this.ensureMeta(chain, address);
+    if (!meta) return;
+    const mk = metaKey(chain, address);
+    const lk = ledgerKey(chain, address);
+    const sk = seenKey(chain, address);
+    const launchedAt = Number(meta.launchedAt);
+    const creator = meta.creator || null;
+    const sorted = [...trades].sort((a, b) => a.at.getTime() - b.at.getTime() || (a.slot ?? 0) - (b.slot ?? 0));
+    // the launch slot: the dev's first trade (create + initial buy share a tx), else the oldest trade we know
+    let launchSlot = meta.launchSlot ? Number(meta.launchSlot) : null;
+    if (launchSlot == null) {
+      const devFirst = sorted.find((t) => t.slot != null && t.wallet === creator);
+      if (devFirst?.slot != null) {
+        launchSlot = devFirst.slot;
+        await this.redis.client.hset(mk, 'launchSlot', String(launchSlot));
+      }
     }
-    // recompute at most every 2s per coin (and always on dev moves)
-    if (isDev || (await this.redis.allow(`intel:${chain}:${address}`, 1, 2))) await this.recompute(chain, address);
+    let changed = false;
+    let devSold: { wallet: string; soldAll: boolean; at: Date } | null = null;
+    for (const t of sorted) {
+      if (t.signature) {
+        const fresh = await this.redis.client.sadd(sk, t.signature);
+        if (!fresh) continue;
+      }
+      const prevRaw = await this.redis.client.hget(lk, t.wallet);
+      const prev = prevRaw ? (JSON.parse(prevRaw) as LedgerEntry) : null;
+      const isDev = !!creator && t.wallet === creator;
+      let rank = 0;
+      if (t.side === 'buy' && !prev && !isDev) rank = await this.redis.client.hincrby(mk, 'buyers', 1);
+      let ms = t.at.getTime() - launchedAt;
+      if (t.slot != null && launchSlot != null) ms = t.slot === launchSlot ? 0 : Math.max(ms, BUNDLE_WINDOW_MS + 1);
+      const next = applyTrade(prev, t, ms, rank);
+      await this.redis.client.hset(lk, t.wallet, JSON.stringify(next));
+      changed = true;
+      if (isDev && t.side === 'sell') devSold = { wallet: t.wallet, soldAll: next.bal <= next.bt * 0.001, at: t.at };
+    }
+    if (!changed) return;
+    await this.redis.client.multi().expire(lk, TTL).expire(sk, TTL).expire(mk, TTL).exec();
+    this.active.add(`${chain}|${address}`);
+    // backfilled dev sells still mark the coin, but only fresh ones (≤2 min) trigger automations
+    if (devSold && (live || Date.now() - devSold.at.getTime() < 120_000)) {
+      for (const h of this.devSellHandlers) void Promise.resolve(h({ chain, address, wallet: devSold.wallet, soldAll: devSold.soldAll, at: devSold.at })).catch(() => undefined);
+    } else if (devSold) {
+      await this.prisma.db.token.updateMany({ where: { chain: chain as Chain, address, devSoldAt: null }, data: { devSoldAt: devSold.at } }).catch(() => undefined);
+    }
+    if (devSold || !live || (await this.redis.allow(`intel:${chain}:${address}`, 1, 2))) await this.recompute(chain, address);
+  }
+
+  /** Pull recent trades for a coin: pump.fun's API (with slots) for pump coins, GeckoTerminal otherwise. */
+  async backfill(chain: ChainId, address: string): Promise<boolean> {
+    const row = await this.prisma.db.token.findUnique({ where: { chain_address: { chain: chain as Chain, address } }, select: { launchpad: true, pairAddress: true, migratedAt: true } });
+    if (!row) return false;
+    // pump.fun's API is the best source for curve coins; if it pushes back we use GeckoTerminal for a minute
+    const pumpOk = row.launchpad === 'pumpfun' && !(await this.redis.client.exists('intel:cooldown'));
+    try {
+      if (pumpOk) {
+        const trades = await pumpTrades(address, 200);
+        await this.ingest(
+          chain,
+          address,
+          trades.map((t) => ({ wallet: t.wallet, side: t.side, tokenAmount: t.tokenAmount, nativeAmount: t.solAmount, signature: t.signature, at: t.at, slot: t.slot })),
+        );
+        return true;
+      }
+      if (!row.pairAddress) return false;
+      const trades = await geckoterminal.trades(chain, row.pairAddress);
+      await this.ingest(
+        chain,
+        address,
+        trades
+          .filter((t) => t.tokenAmount != null)
+          .map((t) => ({ wallet: t.wallet, side: t.side, tokenAmount: t.tokenAmount!, nativeAmount: t.quoteAmount ?? 0, signature: t.txHash, at: new Date(t.at), slot: t.block })),
+      );
+      return true;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (pumpOk && (status === 429 || status === 403 || status === 530)) {
+        await this.redis.client.set('intel:cooldown', '1', 'EX', 60);
+        this.log.warn(`pump.fun trades API refused (${status}) — using GeckoTerminal for 60s`);
+      } else this.log.debug(`backfill ${chain}:${address} failed: ${(e as Error).message}`);
+      return false;
+    }
+  }
+
+  /** Someone opened this coin — keep its ledger fresh while they look. */
+  async touch(chain: ChainId, address: string) {
+    await this.redis.client.zadd('intel:viewed', Date.now(), `${chain}|${address}`);
+    if (await this.redis.allow(`ib:${chain}:${address}`, 1, 8)) await this.backfill(chain, address);
+  }
+
+  /**
+   * Background backfill: coins people are looking at first, then the hottest launchpad coins.
+   * ~20 pump.fun calls a minute; GeckoTerminal calls go through its shared budget.
+   */
+  @Interval(6_000)
+  async backfillPass() {
+    if (env.NODE_ENV === 'test' || env.TRENCHES_WORKER !== '1') return;
+    const since = Date.now() - 120_000;
+    const viewed = (await this.redis.client.zrangebyscore('intel:viewed', since, '+inf')).map((k) => k.split('|') as [ChainId, string]);
+    await this.redis.client.zremrangebyscore('intel:viewed', 0, since);
+    const hot = await this.prisma.db.token.findMany({
+      where: { launchpad: 'pumpfun', migratedAt: null, createdAt: { gte: new Date(Date.now() - 3 * 3600_000) }, marketCapUsd: { gte: 6_000 } },
+      orderBy: [{ marketCapUsd: 'desc' }],
+      take: 40,
+      select: { chain: true, address: true },
+    });
+    const queue = [...viewed, ...hot.map((t) => [t.chain as ChainId, t.address] as [ChainId, string])];
+    let done = 0;
+    for (const [chain, address] of queue) {
+      if (done >= 2) break;
+      if (!(await this.redis.allow(`ib:${chain}:${address}`, 1, 25))) continue;
+      if (await this.backfill(chain, address)) done++;
+    }
   }
 
   async ledger(chain: string, address: string): Promise<{ ledger: Record<string, LedgerEntry>; creator: string | null; supply: number | null } | null> {
@@ -120,6 +243,7 @@ export class IntelService implements OnModuleInit {
 
   /** Holder table for the coin page. Returns null when we have no ledger (non-launchpad coins). */
   async holders(chain: ChainId, address: string, sort: HolderSort, tag: WalletTag | null, priceNative: number | null, limit = 100): Promise<HolderRow[] | null> {
+    await this.touch(chain, address).catch(() => undefined);
     const l = await this.ledger(chain, address);
     if (!l) return null;
     let rows = sortHolders(holderRows(l.ledger, l.creator, l.supply, priceNative), sort);

@@ -51,6 +51,9 @@ export interface PoolTrade {
   priceUsd: number | null;
   /** Native-coin amount on the native side of the swap, when the pool quotes against it. */
   tokenAmount: number | null;
+  /** Amount on the other side of the swap (SOL / BNB / ETH for native-quoted pools). */
+  quoteAmount: number | null;
+  block: number | null;
   txHash: string;
   at: string;
 }
@@ -73,6 +76,8 @@ export const geckoterminal = {
         usd: num(a.volume_in_usd),
         priceUsd: num(buy ? a.price_to_in_usd : a.price_from_in_usd),
         tokenAmount: num(buy ? a.to_token_amount : a.from_token_amount),
+        quoteAmount: num(buy ? a.from_token_amount : a.to_token_amount),
+        block: a.block_number != null ? Number(a.block_number) : null,
         txHash: a.tx_hash,
         at: a.block_timestamp,
       } as PoolTrade;

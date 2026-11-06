@@ -6,7 +6,7 @@ export { coinbase } from './market/coinbase';
 export * from './swap';
 export { goplus, type TopHolder } from './security/goplus';
 export * from './launchpads/types';
-export { PumpFunFeed, pumpBondingPct, pumpPortalTradeTx, pumpMetadata } from './launchpads/pumpfun';
+export { PumpFunFeed, pumpBondingPct, pumpPortalTradeTx, pumpMetadata, pumpTrades, type PumpTrade } from './launchpads/pumpfun';
 export { ClankerFeed } from './launchpads/clanker';
 export { EvmFactoryFeed, evmFactoryFeedsFromEnv } from './launchpads/evm-factory';
 export { polymarket } from './extras/polymarket';

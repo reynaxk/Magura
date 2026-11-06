@@ -162,3 +162,40 @@ export async function pumpMetadata(uri: string): Promise<{ image?: string; twitt
     return null;
   }
 }
+
+/** One bonding-curve trade from pump.fun's own API. */
+export interface PumpTrade {
+  signature: string;
+  wallet: string;
+  side: 'buy' | 'sell';
+  /** UI units (6 decimals on pump.fun) */
+  tokenAmount: number;
+  /** SOL */
+  solAmount: number;
+  at: Date;
+  slot: number | null;
+}
+
+/**
+ * Trades on a pump.fun coin (newest first, up to `limit`), with slot numbers —
+ * the free replacement for PumpPortal's per-coin stream, which became paid.
+ */
+export async function pumpTrades(mint: string, limit = 200, offset = 0): Promise<PumpTrade[]> {
+  const rows = await fetchJson<any[]>(`https://frontend-api-v3.pump.fun/trades/all/${mint}?limit=${limit}&offset=${offset}&minimumSize=0`, {
+    timeoutMs: 6000,
+    retries: 0,
+    headers: { origin: 'https://pump.fun', referer: 'https://pump.fun/', 'user-agent': 'Mozilla/5.0 (compatible; Magura/1.0)' },
+  });
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((r) => r && r.signature && r.user)
+    .map((r) => ({
+      signature: String(r.signature),
+      wallet: String(r.user),
+      side: r.is_buy ? 'buy' : 'sell',
+      tokenAmount: Number(r.token_amount) / 1e6,
+      solAmount: Number(r.sol_amount) / 1e9,
+      at: new Date(Number(r.timestamp) * (Number(r.timestamp) < 1e12 ? 1000 : 1)),
+      slot: r.slot != null ? Number(r.slot) : null,
+    }));
+}

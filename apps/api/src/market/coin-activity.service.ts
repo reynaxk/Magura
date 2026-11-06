@@ -121,6 +121,8 @@ export class CoinActivityService {
         usd: t.amountUsd != null ? Number(t.amountUsd) : null,
         priceUsd: t.priceUsd,
         tokenAmount: null,
+        quoteAmount: null,
+        block: null,
         txHash: t.txHash ?? t.id,
         at: t.createdAt.toISOString(),
       }));

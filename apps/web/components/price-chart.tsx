@@ -10,7 +10,11 @@ export interface ChartMarker {
   at: string;
   side: 'buy' | 'sell';
   label: string;
+  /** dev / you / friend — sets the colour */
+  kind?: 'friend' | 'dev' | 'you' | 'smart';
 }
+
+const KIND_COLOR = { dev: '#F5A64A', you: '#E9ECF2', smart: '#A78BFA' } as const;
 
 export function PriceChart({ chain, pool, tf, height = 320, markers = [] }: { chain: ChainId; pool: string | null; tf: Timeframe; height?: number; markers?: ChartMarker[] }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -80,8 +84,8 @@ export function PriceChart({ chain, pool, tf, height = 320, markers = [] }: { ch
       .map(({ m, t }) => ({
         time: t as UTCTimestamp,
         position: m.side === 'buy' ? ('belowBar' as const) : ('aboveBar' as const),
-        color: m.side === 'buy' ? '#2FE39A' : '#FF6B6B',
-        shape: m.side === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
+        color: m.kind && m.kind !== 'friend' ? KIND_COLOR[m.kind] : m.side === 'buy' ? '#2FE39A' : '#FF6B6B',
+        shape: m.kind === 'dev' ? ('circle' as const) : m.side === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
         text: m.label,
       }));
     candleRef.current.setMarkers(ms);

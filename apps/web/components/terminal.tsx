@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CHAINS, fmtPrice, fmtUsd, roomIds, type ChainId, type PairSummary, type Timeframe, type TokenRisk } from '@magura/shared';
+import { CHAINS, fmtPrice, fmtUsd, roomIds, type ChainId, type PairSummary, type Timeframe, type TokenIntel, type TokenRisk } from '@magura/shared';
 import { api } from '@/lib/api';
 import { ChatPanel } from './chat-panel';
 import { PriceChart, type ChartMarker } from './price-chart';
 import { TradeTicket } from './trade-ticket';
 import { InstantTrade } from './instant-trade';
 import { CoinActivity } from './coin-activity';
+import { SupplySplit } from './supply-split';
 import { PriceAlertButton } from './price-alerts';
 import { Avatar, Delta, Flash, RiskTags, Segmented, Skeleton } from './ui';
 
@@ -17,7 +18,7 @@ interface TokenInfo {
   chain: ChainId;
   address: string;
   pair: PairSummary | null;
-  token: { symbol: string; name: string; imageUrl: string | null; launchpad: string | null; bondingPct: number | null; pairAddress: string | null; priceUsd?: number | null; priceChange24h?: number | null; marketCapUsd?: number | null; volumeUsd?: number | null; liquidityUsd?: number | null } | null;
+  token: { symbol: string; name: string; imageUrl: string | null; launchpad: string | null; bondingPct: number | null; pairAddress: string | null; priceUsd?: number | null; priceChange24h?: number | null; marketCapUsd?: number | null; volumeUsd?: number | null; liquidityUsd?: number | null; creator?: string | null; intel?: TokenIntel | null; devSoldAt?: string | null } | null;
   risk: TokenRisk | null;
 }
 
@@ -52,7 +53,22 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
     queryFn: () => api<{ handle: string; side: 'buy' | 'sell'; at: string }[]>(`/market/tokens/${chain}/${address}/friends`),
     refetchInterval: 30_000,
   });
-  const markers = useMemo<ChartMarker[]>(() => (friends.data ?? []).map((f) => ({ at: f.at, side: f.side, label: f.handle })), [friends.data]);
+  // dev + your own trades come from the labelled trade feed (shared cache with the Trades tab)
+  const coinTrades = useQuery({
+    queryKey: ['coin-trades', chain, address, 0],
+    queryFn: () => api<{ side: 'buy' | 'sell'; at: string; tags: string[] }[]>(`/market/tokens/${chain}/${address}/trades?min=0`),
+    refetchInterval: 8_000,
+  });
+  const [show, setShow] = useState({ friends: true, dev: true, you: true });
+  const markers = useMemo<ChartMarker[]>(() => {
+    const out: ChartMarker[] = [];
+    if (show.friends) for (const f of friends.data ?? []) out.push({ at: f.at, side: f.side, label: f.handle, kind: 'friend' });
+    for (const t of coinTrades.data ?? []) {
+      if (show.dev && t.tags.includes('dev')) out.push({ at: t.at, side: t.side, label: `DEV ${t.side === 'buy' ? 'B' : 'S'}`, kind: 'dev' });
+      else if (show.you && t.tags.includes('you')) out.push({ at: t.at, side: t.side, label: 'YOU', kind: 'you' });
+    }
+    return out;
+  }, [friends.data, coinTrades.data, show]);
 
   return (
     <div className="flex min-h-app flex-wrap">
@@ -107,6 +123,26 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
           ) : (
             <PriceChart chain={chain} pool={pool} tf={tf} height={340} markers={markers} />
           )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="label mr-1">On chart</span>
+            {(
+              [
+                ['friends', 'Friends', '#2FE39A'],
+                ['dev', 'Dev', '#F5A64A'],
+                ['you', 'You', '#E9ECF2'],
+              ] as const
+            ).map(([k, label, color]) => (
+              <button
+                key={k}
+                aria-pressed={show[k]}
+                onClick={() => setShow((v) => ({ ...v, [k]: !v[k] }))}
+                className={`flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold ${show[k] ? 'border-line-3 bg-raised text-text' : 'border-line-2 text-faint'}`}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: show[k] ? color : '#2A303C' }} />
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-3">
             <span className="label">Risk</span>
             <RiskTags risk={info.data?.risk ?? null} />
@@ -122,9 +158,14 @@ export function Terminal({ chain, address, inDrawer = false }: { chain: ChainId;
         </section>
         <div className="flex flex-wrap gap-4">
           <div className="min-w-0 flex-[999_1_420px]">
-            <CoinActivity chain={chain} address={address} />
+            <CoinActivity chain={chain} address={address} creator={tok?.creator ?? null} />
           </div>
           <div className="flex flex-[1_1_280px] flex-col gap-4">
+            {(tok?.intel || info.data?.risk) && (
+              <section aria-label="Supply split" className="panel p-4">
+                <SupplySplit intel={tok?.intel} risk={info.data?.risk ?? null} />
+              </section>
+            )}
             {symbol !== '…' && <InstantTrade target={{ chain, token: address, symbol }} />}
             <TradeTicket chain={chain} token={address} symbol={symbol} mcUsd={pair?.marketCap ?? pair?.fdv ?? tok?.marketCapUsd ?? null} />
           </div>

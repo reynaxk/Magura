@@ -35,6 +35,10 @@ const Env = z.object({
   TELEGRAM_BOT_TOKEN: key(),
   TELEGRAM_BOT_USERNAME: key(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  /** Public channel the bot posts signals to, e.g. @magura_signals (bot must be a channel admin). */
+  TELEGRAM_CHANNEL_ID: z.string().optional(),
+  /** Discord #live-signals channel webhook URL. */
+  DISCORD_SIGNALS_WEBHOOK: key(),
   /** Coinbase Developer Platform key for the card / Apple Pay onramp. */
   CDP_API_KEY_ID: key(),
   CDP_API_KEY_SECRET: key(),

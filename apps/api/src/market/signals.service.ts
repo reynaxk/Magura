@@ -21,6 +21,12 @@ export class SignalsService implements OnModuleInit {
   private tokenCache = new Map<string, { symbol: string; imageUrl: string | null; marketCapUsd: number | null; at: number }>();
   /** Solana wallets users track → who tracks them and under what name */
   private tracked = new Map<string, { userId: string; label: string }[]>();
+  private listeners: ((s: SignalDTO) => void)[] = [];
+
+  /** Subscribe to every public signal as it is emitted. */
+  onSignal(fn: (s: SignalDTO) => void) {
+    this.listeners.push(fn);
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -122,6 +128,7 @@ export class SignalsService implements OnModuleInit {
     };
     await this.redis.client.multi().lpush(LIST, JSON.stringify(s)).ltrim(LIST, 0, KEEP - 1).exec();
     this.rt.toRoom(`trenches:${chain}`, 'signal', s);
+    for (const fn of this.listeners) fn(s);
   }
 
   async recent(kinds: SignalKind[] | null, limit = 150): Promise<SignalDTO[]> {

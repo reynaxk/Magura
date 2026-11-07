@@ -27,6 +27,7 @@ import { TrenchesService } from './market/trenches.service';
 import { IntelService } from './market/intel.service';
 import { SmartService } from './market/smart.service';
 import { SignalsService } from './market/signals.service';
+import { BroadcastService } from './market/broadcast.service';
 import { ModerationModule } from './moderation/moderation.service';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -84,6 +85,6 @@ class HealthController {
     OnrampController,
     PriceAlertsController,
   ],
-  providers: [BootstrapService, HuntService, CoinActivityService, IntelService, SmartService, SignalsService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, WalletCopyService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
+  providers: [BootstrapService, HuntService, CoinActivityService, IntelService, SmartService, SignalsService, BroadcastService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, WalletCopyService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
 })
 export class AppModule {}

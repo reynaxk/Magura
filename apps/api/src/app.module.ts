@@ -19,6 +19,7 @@ import { OnrampController } from './trading/onramp.controller';
 import { PriceAlertsController, PriceAlertsService } from './notifications/price-alerts';
 import { AlertsService } from './notifications/alerts.service';
 import { TelegramController } from './notifications/telegram.controller';
+import { TelegramBotService } from './notifications/telegram-bot.service';
 import { TrackedController } from './market/tracked.controller';
 import { WatchlistController } from './market/watchlist.controller';
 import { WalletCopyController } from './trading/wallet-copy.controller';
@@ -85,6 +86,6 @@ class HealthController {
     OnrampController,
     PriceAlertsController,
   ],
-  providers: [BootstrapService, HuntService, CoinActivityService, IntelService, SmartService, SignalsService, BroadcastService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, WalletCopyService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
+  providers: [BootstrapService, HuntService, CoinActivityService, IntelService, SmartService, SignalsService, BroadcastService, TelegramBotService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, WalletCopyService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
 })
 export class AppModule {}

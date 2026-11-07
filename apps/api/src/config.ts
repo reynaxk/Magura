@@ -2,7 +2,13 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 /** Pasted keys often carry stray spaces, newlines or wrapping quotes. */
-const clean = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/^(['"`])(.*)\1$/s, '$2').trim() || undefined : v);
+const clean = (v: unknown) =>
+  typeof v === 'string'
+    ? v
+        .trim()
+        .replace(/^(['"`])(.*)\1$/s, '$2')
+        .trim() || undefined
+    : v;
 const key = () => z.preprocess(clean, z.string().optional());
 
 const Env = z.object({
@@ -28,7 +34,10 @@ const Env = z.object({
   SENTRY_DSN: z.string().optional(),
   /** Treasury wallets that receive Magura's trading fee. Public addresses, not secrets. */
   FEE_WALLET_SOLANA: z.string().min(32).max(44).optional(),
-  FEE_WALLET_EVM: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+  FEE_WALLET_EVM: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .optional(),
   /** Public URL of this API (for webhooks), e.g. https://api-production.up.railway.app */
   API_PUBLIC_URL: z.string().url().optional(),
   /** Telegram alerts bot (from @BotFather). */
@@ -39,6 +48,10 @@ const Env = z.object({
   TELEGRAM_CHANNEL_ID: z.string().optional(),
   /** Discord #live-signals channel webhook URL. */
   DISCORD_SIGNALS_WEBHOOK: key(),
+  /** Discord bot: public key (verifies interactions), application id, and bot token (registers commands). */
+  DISCORD_PUBLIC_KEY: z.string().optional(),
+  DISCORD_APP_ID: z.string().optional(),
+  DISCORD_BOT_TOKEN: key(),
   /** Coinbase Developer Platform key for the card / Apple Pay onramp. */
   CDP_API_KEY_ID: key(),
   CDP_API_KEY_SECRET: key(),

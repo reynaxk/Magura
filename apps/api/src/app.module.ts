@@ -20,6 +20,8 @@ import { PriceAlertsController, PriceAlertsService } from './notifications/price
 import { AlertsService } from './notifications/alerts.service';
 import { TelegramController } from './notifications/telegram.controller';
 import { TelegramBotService } from './notifications/telegram-bot.service';
+import { DiscordBotService } from './notifications/discord-bot.service';
+import { DiscordController } from './notifications/discord.controller';
 import { TrackedController } from './market/tracked.controller';
 import { WatchlistController } from './market/watchlist.controller';
 import { WalletCopyController } from './trading/wallet-copy.controller';
@@ -53,7 +55,10 @@ class HealthController {
   async health() {
     const [db, cache] = await Promise.all([
       this.prisma.db.$queryRaw`SELECT 1`.then(() => 'ok').catch(() => 'down'),
-      this.redis.client.ping().then(() => 'ok').catch(() => 'down'),
+      this.redis.client
+        .ping()
+        .then(() => 'ok')
+        .catch(() => 'down'),
     ]);
     return { status: db === 'ok' && cache === 'ok' ? 'ok' : 'degraded', db, redis: cache, spotOnly: true };
   }
@@ -77,15 +82,38 @@ class HealthController {
     GroupsController,
     DmsController,
     RtcController,
-    TrackedController, WatchlistController, WalletCopyController,
+    TrackedController,
+    WatchlistController,
+    WalletCopyController,
     OrdersController,
     ReferralsController,
     FeedController,
     TelegramController,
+    DiscordController,
     CompetitionsController,
     OnrampController,
     PriceAlertsController,
   ],
-  providers: [BootstrapService, HuntService, CoinActivityService, IntelService, SmartService, SignalsService, BroadcastService, TelegramBotService, TrenchesService, TradingService, CopyService, SignerService, OrdersService, WalletCopyService, ReferralsService, AlertsService, CompetitionsService, PriceAlertsService],
+  providers: [
+    BootstrapService,
+    HuntService,
+    CoinActivityService,
+    IntelService,
+    SmartService,
+    SignalsService,
+    BroadcastService,
+    TelegramBotService,
+    DiscordBotService,
+    TrenchesService,
+    TradingService,
+    CopyService,
+    SignerService,
+    OrdersService,
+    WalletCopyService,
+    ReferralsService,
+    AlertsService,
+    CompetitionsService,
+    PriceAlertsService,
+  ],
 })
 export class AppModule {}
